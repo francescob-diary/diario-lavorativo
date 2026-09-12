@@ -7,6 +7,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Serve per poter riscrivere nel repository il referto degli errori.
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -31,7 +35,34 @@ jobs:
           gradle-version: '8.9'
 
       - name: Compila l'APK di prova
-        run: gradle assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log
+
+      # Se la compilazione cade, il motivo finisce in un file dentro il
+      # repository invece che solo nel registro di GitHub. Il registro si
+      # scarica da un indirizzo esterno che non tutti riescono a
+      # raggiungere; un file nel repository lo legge chiunque.
+      - name: Scrivi il referto se qualcosa e' andato storto
+        if: failure()
+        run: |
+          {
+            echo "Compilazione fallita il $(date -u +'%d/%m/%Y alle %H:%M UTC')"
+            echo
+            echo "=== ERRORI DEL COMPILATORE ==="
+            grep -E "^e: |error:" /tmp/build.log | head -60 || echo "(nessuno)"
+            echo
+            echo "=== COSA DICE GRADLE ==="
+            grep -A 12 "What went wrong" /tmp/build.log | head -40 || echo "(niente)"
+            echo
+            echo "=== ULTIME RIGHE ==="
+            tail -40 /tmp/build.log
+          } > ERRORI-BUILD.txt
+          git config user.name "Compilazione"
+          git config user.email "actions@github.com"
+          git add ERRORI-BUILD.txt
+          git commit -m "Referto della compilazione fallita"
+          git push
 
       # L'APK si carica subito, prima dei test: se un test dovesse
       # fallire, l'APK e' comunque gia' scaricabile e si puo' provare
