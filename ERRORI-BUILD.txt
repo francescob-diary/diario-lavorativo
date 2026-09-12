@@ -1,0 +1,71 @@
+Compilazione fallita il 12/09/2026 alle 07:47 UTC
+
+=== ERRORI DEL COMPILATORE ===
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/MainActivity.kt:43:62 Unresolved reference 'openWeekly'.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/core/photo/GalleryWriter.kt:98:35 Const 'val' initializer should be a constant value.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/export/ExportScreen.kt:242:58 Unresolved reference 'diarioContainer'.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotoDetailDialog.kt:68:19 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotoDetailDialog.kt:68:28 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotoDetailDialog.kt:68:30 Unresolved reference 'diarioContainer'.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotoDetailDialog.kt:70:25 Unresolved reference 'load'.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotosScreen.kt:261:19 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotosScreen.kt:261:28 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotosScreen.kt:261:30 Unresolved reference 'diarioContainer'.
+e: file:///home/runner/work/diario-lavorativo/diario-lavorativo/app/src/main/java/it/diario/lavorativo/ui/photos/PhotosScreen.kt:263:25 Unresolved reference 'load'.
+
+=== COSA DICE GRADLE ===
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
+
+=== ULTIME RIGHE ===
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:21)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:119)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:174)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:195)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:128)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:170)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:267)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:131)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:136)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:165)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:134)
+	... 2 more
+
+
+BUILD FAILED in 44s
+29 actionable tasks: 14 executed, 15 from cache
