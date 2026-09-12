@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import it.diario.lavorativo.core.di.appContainer
 import it.diario.lavorativo.domain.model.ExportFormat
 import it.diario.lavorativo.domain.model.ExportScope
 
@@ -239,7 +240,7 @@ fun ExportScreen(
                 OutlinedButton(
                     onClick = {
                         context.startActivity(
-                            it.diario.lavorativo.core.di.diarioContainer.fileExporter
+                            appContainer(context).fileExporter
                                 .openIntent(file, state.lastFormat)
                         )
                     },

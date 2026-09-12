@@ -35,7 +35,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import it.diario.lavorativo.core.di.diarioContainer
+import androidx.compose.ui.platform.LocalContext
+import it.diario.lavorativo.core.di.appContainer
 import it.diario.lavorativo.domain.model.Photo
 import it.diario.lavorativo.domain.model.WorkActivity
 import it.diario.lavorativo.domain.model.WorkEvent
@@ -65,7 +66,8 @@ fun PhotoDetailDialog(
     var confirmDelete by remember { mutableStateOf(false) }
     var caption by remember(photo.id) { mutableStateOf(photo.caption.orEmpty()) }
 
-    val storage = remember { diarioContainer.photoStorage }
+    val context = LocalContext.current
+    val storage = remember(context) { appContainer(context).photoStorage }
     val bitmap by produceState<Bitmap?>(initialValue = null, photo.fileName) {
         value = storage.load(photo.fileName)
     }

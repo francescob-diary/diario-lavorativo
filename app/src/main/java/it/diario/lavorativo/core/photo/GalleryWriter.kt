@@ -95,6 +95,8 @@ class GalleryWriter(private val context: Context) {
 
     private companion object {
         const val ALBUM_NAME = "Diario Lavorativo"
-        const val RELATIVE_PATH = Environment.DIRECTORY_PICTURES + "/Diario Lavorativo"
+        // Non e' 'const' perche' DIRECTORY_PICTURES arriva da Android e il
+        // compilatore non la considera una costante fissata a priori.
+        val RELATIVE_PATH = Environment.DIRECTORY_PICTURES + "/Diario Lavorativo"
     }
 }

@@ -35,6 +35,13 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(readSharedText(intent))
             }
 
+            // Dichiarata qui e non piu' sotto: il blocco che segue la usa,
+            // e in Kotlin una variabile si puo' leggere solo dopo che e'
+            // stata creata.
+            var openWeekly by remember {
+                mutableStateOf(intent?.hasExtra(EXTRA_OPEN_WEEK) == true)
+            }
+
             // L'app potrebbe essere gia' aperta quando arriva una condivisione:
             // in quel caso il sistema chiama onNewIntent e l'Intent va riletto.
             DisposableEffect(Unit) {
@@ -44,10 +51,6 @@ class MainActivity : ComponentActivity() {
                 }
                 addOnNewIntentListener(listener)
                 onDispose { removeOnNewIntentListener(listener) }
-            }
-
-            var openWeekly by remember {
-                mutableStateOf(intent?.hasExtra(EXTRA_OPEN_WEEK) == true)
             }
 
             DiarioLavorativoTheme {

@@ -59,7 +59,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import it.diario.lavorativo.core.di.diarioContainer
+import it.diario.lavorativo.core.di.appContainer
 import it.diario.lavorativo.domain.model.Photo
 import it.diario.lavorativo.ui.history.LONG_DATE
 import kotlinx.coroutines.launch
@@ -258,7 +258,8 @@ fun PhotosScreen(
  */
 @Composable
 fun PhotoThumbnail(photo: Photo, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val storage = remember { diarioContainer.photoStorage }
+    val context = LocalContext.current
+    val storage = remember(context) { appContainer(context).photoStorage }
     val bitmap by produceState<Bitmap?>(initialValue = null, photo.fileName) {
         value = storage.load(photo.fileName, targetPx = 400)
     }
