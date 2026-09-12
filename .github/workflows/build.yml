@@ -1,0 +1,55 @@
+name: Compila APK
+
+# Si avvia a ogni caricamento sul ramo principale, e si puo' anche
+# lanciare a mano dalla linguetta Actions.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Prendi il codice
+        uses: actions/checkout@v4
+
+      - name: Prepara Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Il progetto non ha il wrapper di Gradle: lo installa l'azione,
+      # bloccato a una versione precisa. Meglio una versione scritta che
+      # "l'ultima disponibile", che un giorno cambia e rompe la build
+      # senza che nessuno abbia toccato niente.
+      - name: Prepara Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compila l'APK di prova
+        run: gradle assembleDebug --stacktrace
+
+      # L'APK si carica subito, prima dei test: se un test dovesse
+      # fallire, l'APK e' comunque gia' scaricabile e si puo' provare
+      # sul telefono mentre si guarda cosa non va.
+      - name: Metti l'APK fra i risultati
+        uses: actions/upload-artifact@v4
+        with:
+          name: DiarioLavorativo-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Esegui i test
+        run: gradle testDebugUnitTest --stacktrace
+
+      - name: Metti i referti dei test fra i risultati
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: referti-test
+          path: app/build/reports/tests/
+          if-no-files-found: ignore

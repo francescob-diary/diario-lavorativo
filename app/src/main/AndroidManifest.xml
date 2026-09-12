@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Posizione usata solo mentre l'app e' in primo piano, per riconoscere il
+      cantiere e registrarne le coordinate. Nessun tracciamento in background.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!--
+      Lettura della rubrica: usata SOLO quando l'utente preme "scegli contatto"
+      registrando una telefonata. Nessuna lettura automatica, nessun accesso al
+      registro chiamate.
+    -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!--
+      Notifiche: serve il permesso esplicito da Android 13. Se l'utente lo
+      nega il promemoria non compare, ma l'app continua a funzionare.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Riarmare il promemoria dopo un riavvio del telefono. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!--
+      Scrittura in galleria. Da Android 10 non serve alcun permesso per le
+      immagini create dall'app stessa, quindi si dichiara solo fino alla 9.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!--
+      Fotocamera: non serve il permesso CAMERA perche' si usa l'app fotocamera
+      di sistema tramite intent, e non l'anteprima dentro l'app. Chiedere un
+      permesso in meno e' sempre meglio.
+    -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- Il GPS e' utile ma non indispensabile: l'app funziona anche senza. -->
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+
+    <!--
+      Microfono: serve solo per le note vocali, e si chiede la prima volta
+      che si preme REGISTRA. L'app non ascolta in nessun altro momento.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:name=".DiarioApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DiarioLavorativo">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.DiarioLavorativo">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              Ricezione del testo condiviso da WhatsApp, dalla posta e da
+              qualunque altra app. E' la strada pulita per portare dentro il
+              contenuto di un messaggio: l'utente sceglie cosa condividere,
+              l'app non legge nulla per conto suo.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          Serve per condividere file generati dall'app, ad esempio il PDF
+          del rapportino nella fase 11. Le foto non passano piu' di qui:
+          vanno direttamente in galleria tramite MediaStore.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!--
+          Promemoria settimanale. exported="false": nessuna altra app deve
+          poterlo far scattare. Il filtro sull'avvio serve solo a riarmare la
+          sveglia dopo un riavvio, perche' il sistema le dimentica.
+        -->
+        <receiver
+            android:name=".core.reminder.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

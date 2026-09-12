@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Percorsi che il FileProvider puo' condividere.
+  Solo lo stretto necessario: la cartella delle foto, perche' la fotocamera
+  possa scriverci lo scatto, e quella delle esportazioni, per poter allegare
+  il PDF o il foglio di calcolo a una mail o a un messaggio.
+-->
+<paths>
+    <files-path
+        name="foto_cantiere"
+        path="foto/" />
+    <files-path
+        name="esportazioni"
+        path="export/" />
+</paths>
