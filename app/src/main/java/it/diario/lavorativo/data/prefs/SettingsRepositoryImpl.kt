@@ -19,6 +19,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /** Impostazioni su DataStore: piccole, non relazionali, non hanno bisogno del database. */
 class SettingsRepositoryImpl(private val context: Context) : SettingsRepository {
 
+    private companion object {
+        const val EXPORT_PREFIX = "export_"
+    }
+
     private object Keys {
         val USER_NAME = stringPreferencesKey("user_name")
         val STANDARD_MINUTES = intPreferencesKey("standard_work_minutes")
@@ -56,6 +60,20 @@ class SettingsRepositoryImpl(private val context: Context) : SettingsRepository 
             prefs[Keys.REMINDER_HOUR] = settings.hour
             prefs[Keys.REMINDER_MINUTE] = settings.minute
         }
+    }
+
+    override val exportChoices: Flow<Map<String, Boolean>> = context.dataStore.data.map { prefs ->
+        prefs.asMap().mapNotNull { (key, value) ->
+            if (key.name.startsWith(EXPORT_PREFIX) && value is Boolean) {
+                key.name.removePrefix(EXPORT_PREFIX) to value
+            } else {
+                null
+            }
+        }.toMap()
+    }
+
+    override suspend fun setExportChoice(key: String, value: Boolean) {
+        context.dataStore.edit { it[booleanPreferencesKey(EXPORT_PREFIX + key)] = value }
     }
 
     override suspend fun setUserName(name: String) {

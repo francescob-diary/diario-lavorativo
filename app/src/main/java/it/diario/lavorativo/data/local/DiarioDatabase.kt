@@ -33,6 +33,7 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_2_3
 import it.diario.lavorativo.data.local.migration.MIGRATION_3_4
 import it.diario.lavorativo.data.local.migration.MIGRATION_4_5
 import it.diario.lavorativo.data.local.migration.MIGRATION_5_6
+import it.diario.lavorativo.data.local.migration.MIGRATION_6_7
 
 /**
  * Database locale dell'app.
@@ -47,6 +48,7 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_5_6
  * version 5: tabella voice_notes.
  * version 6: mezzo aziendale (vehicles, fuel_stops, vehicle_expenses,
  *            maintenances) e colonna travelKm sulle giornate.
+ * version 7: campo workInProgress (lavoro in corso) sui cantieri.
  */
 @Database(
     entities = [
@@ -63,7 +65,7 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_5_6
         VehicleExpenseEntity::class,
         MaintenanceEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class DiarioDatabase : RoomDatabase() {
@@ -103,7 +105,8 @@ abstract class DiarioDatabase : RoomDatabase() {
                     MIGRATION_2_3,
                     MIGRATION_3_4,
                     MIGRATION_4_5,
-                    MIGRATION_5_6
+                    MIGRATION_5_6,
+                    MIGRATION_6_7
                 )
                 // WAL: scritture piu' veloci e letture non bloccate (utile in cantiere).
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)

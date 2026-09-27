@@ -28,7 +28,7 @@ class WorkTimeCalculatorTest {
         LocalDateTime.of(date, java.time.LocalTime.of(hour, minute)).atZone(zone).toInstant()
 
     @Test
-    fun `esempio della specifica: 0730-1700 con due pause`() {
+    fun `esempio della specifica - 0730-1700 con due pause`() {
         val day = WorkDay(
             id = 1, date = date,
             startTime = at(7, 30), endTime = at(17, 0),

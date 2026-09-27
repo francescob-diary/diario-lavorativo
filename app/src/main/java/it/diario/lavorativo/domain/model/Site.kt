@@ -20,7 +20,13 @@ data class Site(
     val latitude: Double? = null,
     val longitude: Double? = null,
     /** Raggio in metri entro cui si considera di "essere sul cantiere". */
-    val radiusMeters: Int = DEFAULT_RADIUS_METERS
+    val radiusMeters: Int = DEFAULT_RADIUS_METERS,
+    /**
+     * Il lavoro generale che si sta facendo sul cantiere, scritto una volta
+     * sola (es. "ristrutturazione appartamenti"). Finisce nella colonna
+     * LAVORAZIONE E MATERIALE del rapportino.
+     */
+    val workInProgress: String? = null
 ) {
     /** Etichetta breve usata nelle liste: "Nome - Citta". */
     val displayLabel: String

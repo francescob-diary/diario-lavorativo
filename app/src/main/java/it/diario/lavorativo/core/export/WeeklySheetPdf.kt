@@ -19,7 +19,9 @@ import java.util.Locale
 /**
  * Il rapportino settimanale, impaginato sul modulo cartaceo che si usa in
  * sede: "ORE DELLA SETTIMANA", cinque colonne, sette righe da lunedi' a
- * domenica con la domenica in rosso.
+ * domenica. Giorni feriali in nero, sabato in grigio scuro, domenica in
+ * rosso. Sotto la tabella non si scrive nulla: niente totali e niente note,
+ * le ore le somma chi riceve il foglio.
  *
  * Riprodurre il foglio a cui sono abituati in ufficio non e' un vezzo: un
  * documento che arriva con le colonne al posto giusto si controlla in dieci
@@ -49,6 +51,9 @@ object WeeklySheetPdf {
 
     private val BLU = Color.rgb(31, 78, 156)
     private val ROSSO = Color.rgb(220, 30, 30)
+
+    /** Grigio scuro al 75% di nero, per il sabato. */
+    private val GRIGIO_SABATO = Color.rgb(64, 64, 64)
 
     /** Riquadro del marchio, misurato sul foglio cartaceo. */
     private const val LOGO_LEFT = MARGIN + 45f
@@ -91,8 +96,6 @@ object WeeklySheetPdf {
         report.days.forEachIndexed { index, line ->
             y = drawDayRow(canvas, y, index, line)
         }
-
-        drawTotals(canvas, y, report)
 
         pdf.finishPage(page)
         pdf.writeTo(output)
@@ -148,9 +151,10 @@ object WeeklySheetPdf {
             )
         }
 
-        // "DAL 2 AL 8 2026", come sul modulo.
+        // "DAL 2 AL 7 2026", come sul modulo: si chiude al sabato, la
+        // domenica c'e' in tabella ma non nell'intestazione.
         val dal = report.weekStart.format(DAY_MONTH)
-        val al = report.weekEnd.format(DAY_MONTH)
+        val al = report.weekStart.plusDays(5).format(DAY_MONTH)
         var x = MARGIN + 50f
         canvas.drawText("DAL ", x, MARGIN + 140f, RANGE_LABEL)
         x += RANGE_LABEL.measureText("DAL ")
@@ -206,9 +210,13 @@ object WeeklySheetPdf {
 
         drawCellBorders(canvas, top, bottom, widths)
 
-        // La domenica e' rossa sul modulo, e rossa resta.
-        val etichetta = line.date.dayOfMonth.toString() + "-" + DAY_LETTERS[index]
-        val pennello = if (index == 6) DAY_LABEL_SUNDAY else DAY_LABEL
+        // "21L", numero e lettera attaccati. Sabato grigio, domenica rossa.
+        val etichetta = line.date.dayOfMonth.toString() + DAY_LETTERS[index]
+        val pennello = when (index) {
+            5 -> DAY_LABEL_SATURDAY
+            6 -> DAY_LABEL_SUNDAY
+            else -> DAY_LABEL
+        }
         canvas.drawText(
             etichetta,
             MARGIN + widths[0] - 6f,
@@ -224,45 +232,13 @@ object WeeklySheetPdf {
             line.work
         }
 
-        cell(canvas, MARGIN + widths[0], widths[1], top, line.siteName.orEmpty())
+        cell(canvas, MARGIN + widths[0], widths[1], top, line.siteLabel.orEmpty())
         cell(canvas, MARGIN + widths[0] + widths[1], widths[2], top,
             if (line.isWorkDay) DurationFormat.decimalHours(line.net) else "",
             centered = true)
         cell(canvas, MARGIN + widths[0] + widths[1] + widths[2], widths[3], top, lavorazione)
 
         return bottom
-    }
-
-    /**
-     * Riga dei totali sotto la tabella. Sul cartaceo si fa la somma a mano
-     * in fondo: qui e' gia' fatta, ed e' il primo numero che guardano.
-     */
-    private fun drawTotals(canvas: Canvas, top: Float, report: WeeklyReport) {
-        val y = top + 22f
-        canvas.drawText(
-            "TOTALE ORE: " + DurationFormat.decimalHours(report.totals.net).ifBlank { "0" },
-            MARGIN,
-            y,
-            TOTALS
-        )
-
-        if (report.incompleteDays.isNotEmpty()) {
-            canvas.drawText(
-                "Attenzione: " + report.incompleteDays.size.toString() +
-                    " giornata senza orario di uscita",
-                MARGIN,
-                y + 16f,
-                WARNING
-            )
-        }
-
-        if (report.notes.isNotBlank()) {
-            var riga = y + (if (report.incompleteDays.isEmpty()) 20f else 36f)
-            wrap(report.notes, PAGE_WIDTH - MARGIN * 2, BODY).forEach { testo ->
-                canvas.drawText(testo, MARGIN, riga, BODY)
-                riga += 12f
-            }
-        }
     }
 
     // ------------------------------------------------------------ utilita'
@@ -377,7 +353,15 @@ object WeeklySheetPdf {
     }
 
     private val DAY_LABEL = Paint().apply {
-        color = BLU
+        color = Color.BLACK
+        textSize = 20f
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        textAlign = Paint.Align.RIGHT
+        isAntiAlias = true
+    }
+
+    private val DAY_LABEL_SATURDAY = Paint().apply {
+        color = GRIGIO_SABATO
         textSize = 20f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         textAlign = Paint.Align.RIGHT
@@ -405,19 +389,6 @@ object WeeklySheetPdf {
         textSize = 9.5f
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         textAlign = Paint.Align.CENTER
-        isAntiAlias = true
-    }
-
-    private val TOTALS = Paint().apply {
-        color = Color.BLACK
-        textSize = 12f
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        isAntiAlias = true
-    }
-
-    private val WARNING = Paint().apply {
-        color = ROSSO
-        textSize = 9f
         isAntiAlias = true
     }
 

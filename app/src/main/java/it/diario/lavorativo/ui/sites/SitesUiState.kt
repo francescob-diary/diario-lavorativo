@@ -37,6 +37,7 @@ data class SiteEditUiState(
     val contact: String = "",
     val phone: String = "",
     val notes: String = "",
+    val workInProgress: String = "",
     val status: SiteStatus = SiteStatus.ATTIVO,
     val latitude: Double? = null,
     val longitude: Double? = null,

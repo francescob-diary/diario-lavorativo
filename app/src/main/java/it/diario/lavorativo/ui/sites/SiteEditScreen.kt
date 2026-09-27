@@ -133,6 +133,7 @@ fun SiteEditScreen(
                 value = state.address,
                 onValueChange = viewModel::onAddress,
                 label = { Text("Indirizzo") },
+                supportingText = { Text("Via e civico, es. Viale Sarca 85") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -141,6 +142,15 @@ fun SiteEditScreen(
                 value = state.city,
                 onValueChange = viewModel::onCity,
                 label = { Text("Citta") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = state.workInProgress,
+                onValueChange = viewModel::onWorkInProgress,
+                label = { Text("Lavoro in corso") },
+                supportingText = { Text("Es. ristrutturazione appartamenti. Va nel rapportino.") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

@@ -25,6 +25,8 @@ data class SiteEntity(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val radiusMeters: Int = 150,
+    /** Lavoro in corso sul cantiere, es. "ristrutturazione appartamenti". Versione 7. */
+    val workInProgress: String? = null,
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
 )

@@ -213,8 +213,8 @@ class ExportBuilderTest {
         val giornate = documento(ExportOptions(scope = ExportScope.MESE))
             .sheets.first { it.name == "Giornate" }
 
-        assertEquals("in corso", giornate.rows[3][5])
-        assertEquals("", giornate.rows[3][8])
+        assertEquals("in corso", giornate.rows[3][6])
+        assertEquals("", giornate.rows[3][9])
     }
 
     @Test

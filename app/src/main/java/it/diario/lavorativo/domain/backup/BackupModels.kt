@@ -21,7 +21,7 @@ package it.diario.lavorativo.domain.backup
  * viene rifiutato, perche' quella non saprebbe dove mettere i dati
  * dell'auto e li perderebbe per strada senza dirlo.
  */
-const val BACKUP_FORMAT_VERSION = 2
+const val BACKUP_FORMAT_VERSION = 3
 
 data class BackupWorkDay(
     val id: Long,
@@ -66,7 +66,9 @@ data class BackupSite(
     val longitude: Double?,
     val radiusMeters: Int,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    /** Dal formato 3. Assente nei backup vecchi: resta vuoto. */
+    val workInProgress: String? = null
 )
 
 data class BackupActivity(

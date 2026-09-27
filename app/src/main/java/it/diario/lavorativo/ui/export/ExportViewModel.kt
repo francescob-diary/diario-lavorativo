@@ -66,6 +66,26 @@ class ExportViewModel(
     val uiState: StateFlow<ExportUiState> = _uiState.asStateFlow()
 
     init {
+        // Le caselle tornano come le si era lasciate l'ultima volta.
+        viewModelScope.launch {
+            val salvate = settingsRepository.exportChoices.first()
+            _uiState.update { stato ->
+                val o = stato.options
+                stato.copy(
+                    options = o.copy(
+                        includeSummary = salvate[K_SUMMARY] ?: o.includeSummary,
+                        includeDays = salvate[K_DAYS] ?: o.includeDays,
+                        includeActivities = salvate[K_ACTIVITIES] ?: o.includeActivities,
+                        includeEvents = salvate[K_EVENTS] ?: o.includeEvents,
+                        includeCommunications = salvate[K_COMMUNICATIONS] ?: o.includeCommunications,
+                        includeVehicle = salvate[K_VEHICLE] ?: o.includeVehicle,
+                        includeSite = salvate[K_SITE] ?: o.includeSite,
+                        includePlace = salvate[K_PLACE] ?: o.includePlace,
+                        includeWork = salvate[K_WORK] ?: o.includeWork
+                    )
+                )
+            }
+        }
         refreshLabel()
         // I file vecchi si rigenerano in un attimo: non ha senso tenerli.
         viewModelScope.launch { exporter.cleanOlderThan() }
@@ -79,17 +99,27 @@ class ExportViewModel(
         update { it.copy(format = format) }
     }
 
-    fun toggleDays(value: Boolean) = update { it.copy(includeDays = value) }
-    fun toggleActivities(value: Boolean) = update { it.copy(includeActivities = value) }
-    fun toggleEvents(value: Boolean) = update { it.copy(includeEvents = value) }
-    fun toggleSummary(value: Boolean) = update { it.copy(includeSummary = value) }
+    fun toggleDays(value: Boolean) = ricorda(K_DAYS, value) { it.copy(includeDays = value) }
+    fun toggleActivities(value: Boolean) = ricorda(K_ACTIVITIES, value) { it.copy(includeActivities = value) }
+    fun toggleEvents(value: Boolean) = ricorda(K_EVENTS, value) { it.copy(includeEvents = value) }
+    fun toggleSummary(value: Boolean) = ricorda(K_SUMMARY, value) { it.copy(includeSummary = value) }
+    fun toggleVehicle(value: Boolean) = ricorda(K_VEHICLE, value) { it.copy(includeVehicle = value) }
+    fun toggleSite(value: Boolean) = ricorda(K_SITE, value) { it.copy(includeSite = value) }
+    fun togglePlace(value: Boolean) = ricorda(K_PLACE, value) { it.copy(includePlace = value) }
+    fun toggleWork(value: Boolean) = ricorda(K_WORK, value) { it.copy(includeWork = value) }
+
+    /** Cambia una casella e se la segna, cosi' alla prossima apertura e' uguale. */
+    private fun ricorda(key: String, value: Boolean, block: (ExportOptions) -> ExportOptions) {
+        update(block)
+        viewModelScope.launch { settingsRepository.setExportChoice(key, value) }
+    }
 
     /**
      * Le comunicazioni sono spente di default: nel documento che va in sede
      * non devono finire i messaggi di terzi. Si accende a mano quando serve.
      */
     fun toggleCommunications(value: Boolean) =
-        update { it.copy(includeCommunications = value) }
+        ricorda(K_COMMUNICATIONS, value) { it.copy(includeCommunications = value) }
 
     fun previous() {
         val o = _uiState.value.options
@@ -280,6 +310,16 @@ class ExportViewModel(
     }
 
     companion object {
+        const val K_SUMMARY = "summary"
+        const val K_DAYS = "days"
+        const val K_ACTIVITIES = "activities"
+        const val K_EVENTS = "events"
+        const val K_COMMUNICATIONS = "communications"
+        const val K_VEHICLE = "vehicle"
+        const val K_SITE = "site"
+        const val K_PLACE = "place"
+        const val K_WORK = "work"
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 ExportViewModel(

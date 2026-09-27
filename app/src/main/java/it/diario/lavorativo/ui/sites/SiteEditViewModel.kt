@@ -45,6 +45,7 @@ class SiteEditViewModel(
                 contact = site.contact.orEmpty(),
                 phone = site.phone.orEmpty(),
                 notes = site.notes.orEmpty(),
+                workInProgress = site.workInProgress.orEmpty(),
                 status = site.status,
                 latitude = site.latitude,
                 longitude = site.longitude,
@@ -62,6 +63,7 @@ class SiteEditViewModel(
     fun onContact(v: String) = _uiState.update { it.copy(contact = v) }
     fun onPhone(v: String) = _uiState.update { it.copy(phone = v) }
     fun onNotes(v: String) = _uiState.update { it.copy(notes = v) }
+    fun onWorkInProgress(v: String) = _uiState.update { it.copy(workInProgress = v) }
     fun onRadius(v: Int) = _uiState.update { it.copy(radiusMeters = v) }
     fun onStatus(v: SiteStatus) = _uiState.update { it.copy(status = v) }
 
@@ -132,7 +134,8 @@ class SiteEditViewModel(
                     status = s.status,
                     latitude = s.latitude,
                     longitude = s.longitude,
-                    radiusMeters = s.radiusMeters
+                    radiusMeters = s.radiusMeters,
+                    workInProgress = s.workInProgress.trim().ifBlank { null }
                 )
             )
             _uiState.update { it.copy(saving = false, saved = true) }

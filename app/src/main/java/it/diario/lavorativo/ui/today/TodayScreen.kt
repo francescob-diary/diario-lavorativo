@@ -158,6 +158,7 @@ fun TodayScreen(
                         viewModel.showDialog(TodayDialog.SCELTA_CANTIERE)
                     }
                 },
+                onStandardDay = viewModel::startStandardDay,
                 onEnd = viewModel::endDay,
                 onToggleBreak = { viewModel.toggleBreak() }
             )
@@ -414,18 +415,29 @@ private fun SiteRow(siteLabel: String?, onClick: () -> Unit) {
 private fun MainActions(
     state: TodayUiState,
     onStart: () -> Unit,
+    onStandardDay: () -> Unit,
     onEnd: () -> Unit,
     onToggleBreak: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         when {
-            !state.isDayStarted -> BigActionButton(
-                text = "INIZIA GIORNATA",
-                icon = Icons.Filled.PlayArrow,
-                containerColor = VerdeAttivo,
-                contentColor = Color.White,
-                onClick = onStart
-            )
+            !state.isDayStarted -> {
+                BigActionButton(
+                    text = "INIZIA GIORNATA",
+                    icon = Icons.Filled.PlayArrow,
+                    containerColor = VerdeAttivo,
+                    contentColor = Color.White,
+                    onClick = onStart
+                )
+                // Giornata gia' fatta o da segnare a fine turno: orario
+                // standard gia' compilato, pausa pranzo compresa.
+                OutlinedButton(
+                    onClick = onStandardDay,
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                ) {
+                    Text("GIORNATA STANDARD 08:00-17:00, PAUSA 12-13")
+                }
+            }
 
             state.isDayRunning -> {
                 BigActionButton(

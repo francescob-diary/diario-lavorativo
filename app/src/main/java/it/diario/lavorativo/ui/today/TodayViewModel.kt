@@ -138,7 +138,45 @@ class TodayViewModel(
 
     fun endDay() = viewModelScope.launch {
         val day = uiState.value.day ?: return@launch
-        workDayRepository.endDay(day.id, clock.now())
+        val end = clock.now()
+        workDayRepository.endDay(day.id, end)
+        addLunchIfMissing(day, day.startTime, end)
+    }
+
+    /**
+     * Giornata standard in un tocco: ingresso 08:00, uscita 17:00 e pausa
+     * pranzo 12:00-13:00, cioe' 8 ore nette. Tutto resta correggibile a
+     * mano dopo, dalla stessa schermata.
+     */
+    fun startStandardDay() = viewModelScope.launch {
+        if (uiState.value.day?.isStarted == true) return@launch
+        val date = clock.today()
+        val start = STANDARD_START.toInstantOn(date)
+        val end = STANDARD_END.toInstantOn(date)
+        val id = workDayRepository.startDay(date, start, null)
+        workDayRepository.endDay(id, end)
+        addLunchIfMissing(uiState.value.day?.takeIf { it.id == id }, start, end, dayId = id)
+        messageState.value = "Giornata 08:00-17:00 con pausa 12:00-13:00. Correggi se serve."
+    }
+
+    /**
+     * La pausa pranzo 12:00-13:00 si mette da sola se la giornata la
+     * attraversa tutta e non c'e' gia' nessuna pausa segnata.
+     */
+    private suspend fun addLunchIfMissing(
+        day: WorkDay?,
+        start: Instant?,
+        end: Instant?,
+        dayId: Long = day?.id ?: 0L
+    ) {
+        if (dayId == 0L || start == null || end == null) return
+        if (day != null && day.breaks.isNotEmpty()) return
+        val date = start.atZone(clock.zone()).toLocalDate()
+        val lunchStart = LUNCH_START.toInstantOn(date)
+        val lunchEnd = LUNCH_END.toInstantOn(date)
+        if (start.isAfter(lunchStart) || end.isBefore(lunchEnd)) return
+        val breakId = workDayRepository.startBreak(dayId, lunchStart, BreakType.PRANZO)
+        workDayRepository.endBreak(breakId, lunchEnd)
     }
 
     fun closePreviousDay() = viewModelScope.launch {
@@ -270,6 +308,11 @@ class TodayViewModel(
         LocalDateTime.of(date, this).atZone(clock.zone()).toInstant()
 
     companion object {
+        private val STANDARD_START: LocalTime = LocalTime.of(8, 0)
+        private val STANDARD_END: LocalTime = LocalTime.of(17, 0)
+        private val LUNCH_START: LocalTime = LocalTime.of(12, 0)
+        private val LUNCH_END: LocalTime = LocalTime.of(13, 0)
+
         private const val TICK_INTERVAL_MS = 15_000L
         private const val STOP_TIMEOUT_MS = 5_000L
 

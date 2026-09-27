@@ -172,7 +172,8 @@ fun WeeklyScreen(
         OutlinedTextField(
             value = state.notes,
             onValueChange = viewModel::onNotes,
-            label = { Text("Note per la sede") },
+            label = { Text("Note") },
+            supportingText = { Text("Private: non finiscono nel rapportino") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3
         )

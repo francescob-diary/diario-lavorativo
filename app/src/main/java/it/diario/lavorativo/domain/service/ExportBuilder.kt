@@ -89,7 +89,7 @@ class ExportBuilder(
         // summarySheet. Una giornata mai terminata continuerebbe ad
         // accumulare ore fino a oggi e falserebbe tutto il documento.
         if (options.includeDays) {
-            sheets += daysSheet(ordered, activities, now, standardMinutes, zone)
+            sheets += daysSheet(ordered, activities, now, standardMinutes, zone, options)
         }
         if (options.includeActivities) {
             sheets += activitiesSheet(ordered, activities, zone)
@@ -197,10 +197,23 @@ class ExportBuilder(
         activities: Map<Long, List<WorkActivity>>,
         now: Instant,
         standardMinutes: Int,
-        zone: ZoneId
+        zone: ZoneId,
+        options: ExportOptions = ExportOptions()
     ): ExportSheet {
+        // Colonne facoltative: Cantiere, Luogo e Lavoro svolto si tolgono
+        // dal foglio se l'utente le spegne nell'export.
+        val tieni = listOf(
+            true, true, true,
+            options.includeSite, options.includePlace,
+            true, true, true, true, true, true, true,
+            options.includeWork, true
+        )
+        fun <T> List<T>.soloTenute(): List<T> = filterIndexed { i, _ -> tieni[i] }
+
         val rows = days.map { day ->
             val s = calculator.summarize(day, now, standardMinutes)
+            val luogo = day.place?.takeIf { it.isNotBlank() }
+                ?: day.site?.fullAddress.orEmpty()
             val lavoro = day.description?.takeIf { it.isNotBlank() }
                 ?: activities[day.id].orEmpty()
                     .joinToString("; ") { it.description }
@@ -222,6 +235,7 @@ class ExportBuilder(
                 ).replaceFirstChar { it.uppercase() },
                 dayTypeLabel(day.dayType),
                 day.site?.name.orEmpty(),
+                luogo,
                 if (day.dayType == DayType.LAVORO) {
                     day.startTime?.let { time(it, zone) }.orEmpty()
                 } else {
@@ -242,15 +256,15 @@ class ExportBuilder(
                 day.travelKm?.toString().orEmpty(),
                 lavoro,
                 day.notes.orEmpty()
-            )
+            ).soloTenute()
         }
 
         return ExportSheet(
             name = "Giornate",
             headers = listOf(
-                "Data", "Giorno", "Tipo", "Cantiere", "Ingresso", "Uscita",
+                "Data", "Giorno", "Tipo", "Cantiere", "Luogo", "Ingresso", "Uscita",
                 "Pause", "Lordo", "Netto", "Straordinario", "Km", "Lavoro svolto", "Note"
-            ),
+            ).soloTenute(),
             rows = rows
         )
     }

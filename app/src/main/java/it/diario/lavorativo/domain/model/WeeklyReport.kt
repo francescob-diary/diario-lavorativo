@@ -45,6 +45,8 @@ data class WeeklyDayLine(
     val date: LocalDate,
     val dayType: DayType = DayType.LAVORO,
     val siteName: String? = null,
+    /** Cosa si scrive nella colonna CLIENTE O CANTIERE: l'indirizzo del cantiere. */
+    val siteLabel: String? = null,
     val startLabel: String? = null,
     val endLabel: String? = null,
     val net: Duration = Duration.ZERO,

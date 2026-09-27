@@ -88,6 +88,7 @@ object BackupSerializer {
                     put("latitude", s.latitude)
                     put("longitude", s.longitude)
                     put("radiusMeters", s.radiusMeters)
+                    put("workInProgress", s.workInProgress)
                     put("createdAt", s.createdAt)
                     put("updatedAt", s.updatedAt)
                 }
@@ -405,7 +406,8 @@ object BackupSerializer {
             longitude = o.doubleOrNull("longitude"),
             radiusMeters = o.int("radiusMeters", 150),
             createdAt = o.long("createdAt"),
-            updatedAt = o.long("updatedAt")
+            updatedAt = o.long("updatedAt"),
+            workInProgress = o.stringOrNull("workInProgress")
         )
     }
 

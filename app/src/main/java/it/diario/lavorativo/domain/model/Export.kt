@@ -40,7 +40,11 @@ data class ExportOptions(
      * l'ha.
      */
     val includeVehicle: Boolean = true,
-    val includeSummary: Boolean = true
+    val includeSummary: Boolean = true,
+    /** Colonne del foglio Giornate: accese di partenza, si spengono una per una. */
+    val includeSite: Boolean = true,
+    val includePlace: Boolean = true,
+    val includeWork: Boolean = true
 ) {
     val hasSomethingToExport: Boolean
         get() = includeDays || includeActivities || includeEvents ||

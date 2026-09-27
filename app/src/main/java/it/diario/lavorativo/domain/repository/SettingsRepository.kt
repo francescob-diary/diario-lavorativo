@@ -15,4 +15,12 @@ interface SettingsRepository {
     val reminder: Flow<ReminderSettings>
 
     suspend fun setReminder(settings: ReminderSettings)
+
+    /**
+     * Interruttori dell'export ("cosa mettere dentro"), salvati come li si
+     * lascia. Chiave assente = mai toccato: vale il valore di partenza.
+     */
+    val exportChoices: Flow<Map<String, Boolean>>
+
+    suspend fun setExportChoice(key: String, value: Boolean)
 }

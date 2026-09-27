@@ -83,6 +83,7 @@ class WeeklyReportBuilder(
             date = day.date,
             dayType = day.dayType,
             siteName = day.site?.name,
+            siteLabel = SiteAddressFormatter.forReport(day.site),
             startLabel = day.startTime?.let { HHMM.format(it.atZone(zone)) },
             endLabel = day.endTime?.let { HHMM.format(it.atZone(zone)) },
             net = if (day.dayType == DayType.LAVORO) summary.net else Duration.ZERO,
@@ -99,6 +100,9 @@ class WeeklyReportBuilder(
      * cosi' la casella non resta vuota su un foglio che finisce in sede.
      */
     private fun describeWork(day: WorkDay, activities: List<WorkActivity>): String {
+        // Il "Lavoro in corso" del cantiere, se c'e', e' quello che va sul
+        // foglio: e' la descrizione generale che in sede si aspettano.
+        day.site?.workInProgress?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
         if (activities.isNotEmpty()) {
             return activities.joinToString("; ") { activity ->
                 val quantity = activity.quantity?.takeIf { it.isNotBlank() }

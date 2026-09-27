@@ -52,7 +52,8 @@ fun SiteEntity.toDomain(): Site = Site(
     status = SiteStatus.fromStorage(status),
     latitude = latitude,
     longitude = longitude,
-    radiusMeters = radiusMeters
+    radiusMeters = radiusMeters,
+    workInProgress = workInProgress
 )
 
 fun Site.toEntity(createdAt: Long, updatedAt: Long): SiteEntity = SiteEntity(
@@ -71,6 +72,7 @@ fun Site.toEntity(createdAt: Long, updatedAt: Long): SiteEntity = SiteEntity(
     latitude = latitude,
     longitude = longitude,
     radiusMeters = radiusMeters,
+    workInProgress = workInProgress,
     createdAt = createdAt,
     updatedAt = updatedAt
 )

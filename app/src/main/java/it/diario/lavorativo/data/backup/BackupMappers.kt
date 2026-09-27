@@ -61,7 +61,8 @@ fun BackupBreak.toEntity() = BreakEntity(
 fun SiteEntity.toBackup() = BackupSite(
     id, name, address, city, client, company, contact, phone,
     startDate, expectedEndDate, notes, status, latitude, longitude,
-    radiusMeters, createdAt, updatedAt
+    radiusMeters, createdAt, updatedAt,
+    workInProgress = workInProgress
 )
 
 fun BackupSite.toEntity() = SiteEntity(
@@ -69,7 +70,8 @@ fun BackupSite.toEntity() = SiteEntity(
     company = company, contact = contact, phone = phone,
     startDate = startDate, expectedEndDate = expectedEndDate, notes = notes,
     status = status, latitude = latitude, longitude = longitude,
-    radiusMeters = radiusMeters, createdAt = createdAt, updatedAt = updatedAt
+    radiusMeters = radiusMeters, createdAt = createdAt, updatedAt = updatedAt,
+    workInProgress = workInProgress
 )
 
 fun ActivityEntity.toBackup() = BackupActivity(

@@ -188,6 +188,26 @@ fun ExportScreen(
                 checked = state.options.includeDays,
                 onChange = viewModel::toggleDays
             )
+            if (state.options.includeDays) {
+                // Le tre colonne del foglio Giornate, spegnibili una per una.
+                Column(Modifier.padding(start = 16.dp)) {
+                    SwitchRow(
+                        label = "Cantiere",
+                        checked = state.options.includeSite,
+                        onChange = viewModel::toggleSite
+                    )
+                    SwitchRow(
+                        label = "Luogo",
+                        checked = state.options.includePlace,
+                        onChange = viewModel::togglePlace
+                    )
+                    SwitchRow(
+                        label = "Lavorazione",
+                        checked = state.options.includeWork,
+                        onChange = viewModel::toggleWork
+                    )
+                }
+            }
             SwitchRow(
                 label = "Lavorazioni",
                 checked = state.options.includeActivities,
@@ -197,6 +217,11 @@ fun ExportScreen(
                 label = "Eventi",
                 checked = state.options.includeEvents,
                 onChange = viewModel::toggleEvents
+            )
+            SwitchRow(
+                label = "Mezzo aziendale",
+                checked = state.options.includeVehicle,
+                onChange = viewModel::toggleVehicle
             )
             SwitchRow(
                 label = "Comunicazioni",
