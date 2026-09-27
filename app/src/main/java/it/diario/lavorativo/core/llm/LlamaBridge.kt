@@ -1,0 +1,32 @@
+package it.diario.lavorativo.core.llm
+
+/**
+ * Collegamento diretto con la libreria nativa (llama.cpp).
+ * Usato solo da [LocalLlm]: il resto dell'app non lo tocca.
+ */
+internal object LlamaBridge {
+
+    /** Riceve l'avanzamento: fase 0 = lettura del testo, fase 1 = scrittura della risposta. */
+    fun interface ProgressListener {
+        fun onProgress(phase: Int, done: Int, total: Int)
+    }
+
+    @Volatile
+    private var loaded: Throwable? = null
+    private var tried = false
+
+    /** Carica la libreria una volta sola. Null se tutto bene, altrimenti l'errore. */
+    @Synchronized
+    fun ensureLibrary(): Throwable? {
+        if (!tried) {
+            tried = true
+            loaded = runCatching { System.loadLibrary("diario_llm") }.exceptionOrNull()
+        }
+        return loaded
+    }
+
+    external fun nativeLoad(path: String, nCtx: Int, nThreads: Int): Long
+    external fun nativeGenerate(handle: Long, prompt: String, maxTokens: Int, listener: ProgressListener?): ByteArray
+    external fun nativeCancel(handle: Long)
+    external fun nativeFree(handle: Long)
+}

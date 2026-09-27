@@ -1,5 +1,8 @@
 package it.diario.lavorativo.ui.today
 
+import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Mic
+import it.diario.lavorativo.ui.components.DictationTextField
 import it.diario.lavorativo.ui.day.ExtraSitesSection
 import it.diario.lavorativo.ui.day.TripsSection
 import androidx.compose.foundation.layout.heightIn
@@ -81,9 +84,11 @@ fun TodayScreen(
     onOpenEntries: (java.time.LocalDate) -> Unit = {},
     onOpenPhotos: (java.time.LocalDate) -> Unit = {},
     onOpenVoiceNotes: (java.time.LocalDate) -> Unit = {},
+    onOpenDictation: (java.time.LocalDate) -> Unit = {},
     viewModel: TodayViewModel = viewModel(factory = TodayViewModel.Factory)
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var noteAperte by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Il permesso di posizione si chiede solo quando l'utente tocca "Dove sono".
@@ -152,6 +157,17 @@ fun TodayScreen(
             )
 
             Spacer(Modifier.height(20.dp))
+            // Il modo piu' veloce: raccontare la giornata a voce.
+            Button(
+                onClick = { onOpenDictation(state.date) },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
+            ) {
+                Icon(Icons.Filled.Mic, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("RACCONTA LA GIORNATA", style = MaterialTheme.typography.titleMedium)
+            }
+
+            Spacer(Modifier.height(12.dp))
             MainActions(
                 state = state,
                 onStart = {
@@ -205,15 +221,26 @@ fun TodayScreen(
                     Text("FOTO")
                 }
                 OutlinedButton(
-                    onClick = { onOpenVoiceNotes(state.date) },
+                    onClick = { noteAperte = true },
                     modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) {
-                    Text("NOTE VOCALI")
+                    Text(if (state.day?.notes.isNullOrBlank()) "NOTE" else "NOTE (1)")
                 }
             }
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (noteAperte) {
+        NotesDialog(
+            initial = state.day?.notes.orEmpty(),
+            onSave = {
+                viewModel.saveNotes(it)
+                noteAperte = false
+            },
+            onDismiss = { noteAperte = false }
+        )
     }
 
     when (state.dialog) {
@@ -749,4 +776,30 @@ private fun SiteDetectionCard(
             }
         }
     }
+}
+
+/** Note scritte della giornata, con il microfono per dettarle. */
+@Composable
+private fun NotesDialog(
+    initial: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var testo by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Note della giornata") },
+        text = {
+            DictationTextField(
+                value = testo,
+                onValueChange = { testo = it },
+                label = "Note",
+                supportingText = "Tocca il microfono e parla",
+                minLines = 4,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(testo) }) { Text("SALVA") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("ANNULLA") } }
+    )
 }

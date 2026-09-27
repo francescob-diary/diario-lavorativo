@@ -41,6 +41,9 @@ class MainActivity : ComponentActivity() {
             var openWeekly by remember {
                 mutableStateOf(intent?.hasExtra(EXTRA_OPEN_WEEK) == true)
             }
+            var openDictation by remember {
+                mutableStateOf(intent?.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_DICTATION, false) == true)
+            }
 
             // L'app potrebbe essere gia' aperta quando arriva una condivisione:
             // in quel caso il sistema chiama onNewIntent e l'Intent va riletto.
@@ -48,6 +51,9 @@ class MainActivity : ComponentActivity() {
                 val listener = Consumer<Intent> { newIntent ->
                     readSharedText(newIntent)?.let { shared = it }
                     if (newIntent.hasExtra(EXTRA_OPEN_WEEK)) openWeekly = true
+                    if (newIntent.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_DICTATION, false)) {
+                        openDictation = true
+                    }
                 }
                 addOnNewIntentListener(listener)
                 onDispose { removeOnNewIntentListener(listener) }
@@ -58,7 +64,9 @@ class MainActivity : ComponentActivity() {
                     sharedText = shared,
                     onSharedTextHandled = { shared = null },
                     openWeeklyReport = openWeekly,
-                    onWeeklyReportOpened = { openWeekly = false }
+                    onWeeklyReportOpened = { openWeekly = false },
+                    openDictation = openDictation,
+                    onDictationOpened = { openDictation = false }
                 )
             }
         }

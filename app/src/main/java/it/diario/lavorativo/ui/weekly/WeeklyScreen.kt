@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.weekly
 
+import it.diario.lavorativo.ui.components.DictationTextField
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -169,11 +170,11 @@ fun WeeklyScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        OutlinedTextField(
+        DictationTextField(
             value = state.notes,
             onValueChange = viewModel::onNotes,
-            label = { Text("Note") },
-            supportingText = { Text("Private: non finiscono nel rapportino") },
+            label = "Note",
+            supportingText = "Private: non finiscono nel rapportino",
             modifier = Modifier.fillMaxWidth(),
             minLines = 3
         )

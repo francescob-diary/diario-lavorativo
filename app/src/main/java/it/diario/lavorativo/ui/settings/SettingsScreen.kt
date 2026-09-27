@@ -50,6 +50,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val daily by viewModel.dailyReminder.collectAsStateWithLifecycle()
+    val modelUri by viewModel.modelUri.collectAsStateWithLifecycle()
     var nameField by remember { mutableStateOf(settings.userName) }
 
     // Allinea il campo quando arriva il valore salvato.
@@ -128,6 +130,18 @@ fun SettingsScreen(
                 }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+        DictationSettingsCard(
+            modelUri = modelUri,
+            onModelPicked = viewModel::setModelUri
+        )
+
+        Spacer(Modifier.height(16.dp))
+        DailyReminderCard(
+            settings = daily,
+            onChange = viewModel::updateDailyReminder
+        )
 
         Spacer(Modifier.height(24.dp))
 

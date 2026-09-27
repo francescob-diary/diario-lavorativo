@@ -13,10 +13,28 @@ android {
         applicationId = "it.diario.lavorativo"
         minSdk = 26          // java.time nativo, niente desugaring
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.1.0"
+        versionCode = 15
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Il motore del modello per la dettatura e' scritto in C++ e gira
+        // solo sui processori a 64 bit (tutti i telefoni degli ultimi anni).
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     // Firma sempre uguale. Senza, ogni compilazione su GitHub usava una

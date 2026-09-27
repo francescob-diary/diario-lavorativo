@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import it.diario.lavorativo.domain.model.ReminderSettings
+import it.diario.lavorativo.domain.model.DailyReminderSettings
 import it.diario.lavorativo.domain.model.UserSettings
 import it.diario.lavorativo.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,11 @@ class SettingsRepositoryImpl(private val context: Context) : SettingsRepository 
         val REMINDER_DAY = intPreferencesKey("reminder_day")
         val REMINDER_HOUR = intPreferencesKey("reminder_hour")
         val REMINDER_MINUTE = intPreferencesKey("reminder_minute")
+        val DAILY_ENABLED = booleanPreferencesKey("daily_reminder_enabled")
+        val DAILY_HOUR = intPreferencesKey("daily_reminder_hour")
+        val DAILY_MINUTE = intPreferencesKey("daily_reminder_minute")
+        val DAILY_DAYS = stringPreferencesKey("daily_reminder_days")
+        val MODEL_URI = stringPreferencesKey("model_uri")
     }
 
     override val settings: Flow<UserSettings> = context.dataStore.data.map { prefs ->
@@ -70,6 +76,40 @@ class SettingsRepositoryImpl(private val context: Context) : SettingsRepository 
                 null
             }
         }.toMap()
+    }
+
+    override val dailyReminder: Flow<DailyReminderSettings> = context.dataStore.data.map { prefs ->
+        DailyReminderSettings(
+            enabled = prefs[Keys.DAILY_ENABLED] ?: true,
+            hour = (prefs[Keys.DAILY_HOUR] ?: DailyReminderSettings.DEFAULT_HOUR).coerceIn(0, 23),
+            minute = (prefs[Keys.DAILY_MINUTE] ?: DailyReminderSettings.DEFAULT_MINUTE).coerceIn(0, 59),
+            days = prefs[Keys.DAILY_DAYS]
+                ?.split(',')
+                ?.mapNotNull { it.trim().toIntOrNull() }
+                ?.filter { it in 1..7 }
+                ?.map { java.time.DayOfWeek.of(it) }
+                ?.toSet()
+                ?: DailyReminderSettings.DEFAULT_DAYS
+        )
+    }
+
+    override val modelUri: Flow<String?> = context.dataStore.data.map { prefs ->
+        prefs[Keys.MODEL_URI]?.takeIf { it.isNotBlank() }
+    }
+
+    override suspend fun setModelUri(uri: String?) {
+        context.dataStore.edit { prefs ->
+            if (uri.isNullOrBlank()) prefs.remove(Keys.MODEL_URI) else prefs[Keys.MODEL_URI] = uri
+        }
+    }
+
+    override suspend fun setDailyReminder(settings: DailyReminderSettings) {
+        context.dataStore.edit { prefs ->
+            prefs[Keys.DAILY_ENABLED] = settings.enabled
+            prefs[Keys.DAILY_HOUR] = settings.hour
+            prefs[Keys.DAILY_MINUTE] = settings.minute
+            prefs[Keys.DAILY_DAYS] = settings.days.map { it.value }.sorted().joinToString(",")
+        }
     }
 
     override suspend fun setExportChoice(key: String, value: Boolean) {

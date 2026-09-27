@@ -14,6 +14,7 @@ import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.UserSettings
 import it.diario.lavorativo.domain.model.WorkDay
 import it.diario.lavorativo.domain.model.Trip
+import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.ui.day.ExtraSiteInput
 import it.diario.lavorativo.domain.model.WorkTimeSummary
 import it.diario.lavorativo.domain.repository.SettingsRepository
@@ -216,6 +217,14 @@ class TodayViewModel(
     }
 
     fun deleteTrip(id: Long) = viewModelScope.launch { workDayRepository.deleteTrip(id) }
+
+    /** Note scritte della giornata (anche dettate). Crea la giornata se manca. */
+    fun saveNotes(text: String) = viewModelScope.launch {
+        val day = uiState.value.day
+        val id = day?.id ?: workDayRepository.createEmptyDay(clock.today(), DayType.LAVORO)
+        workDayRepository.updateNotes(id, day?.description, text.trim().ifBlank { null })
+        messageState.value = "Note salvate"
+    }
 
     fun selectSite(siteId: Long?) = viewModelScope.launch {
         val day = uiState.value.day

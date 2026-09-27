@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.navigation
 
+import it.diario.lavorativo.ui.dictation.DictationScreen
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,7 +41,9 @@ fun DiarioNavHost(
     sharedText: SharedText? = null,
     onSharedTextHandled: () -> Unit = {},
     openWeeklyReport: Boolean = false,
-    onWeeklyReportOpened: () -> Unit = {}
+    onWeeklyReportOpened: () -> Unit = {},
+    openDictation: Boolean = false,
+    onDictationOpened: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -95,6 +98,15 @@ fun DiarioNavHost(
             }
         }
 
+        // Arrivo dalla notifica di fine giornata: si apre la dettatura di oggi.
+        LaunchedEffect(openDictation) {
+            if (openDictation) {
+                val today = java.time.LocalDate.now().toEpochDay()
+                navController.navigate(DICTATION_ROUTE_PREFIX + today.toString())
+                onDictationOpened()
+            }
+        }
+
         LaunchedEffect(sharedText) {
             if (sharedText != null) {
                 val today = java.time.LocalDate.now().toEpochDay()
@@ -117,6 +129,21 @@ fun DiarioNavHost(
                     },
                     onOpenVoiceNotes = { date ->
                         navController.navigate(VOICE_ROUTE_PREFIX + date.toEpochDay().toString())
+                    },
+                    onOpenDictation = { date ->
+                        navController.navigate(DICTATION_ROUTE_PREFIX + date.toEpochDay().toString())
+                    }
+                )
+            }
+            composable(
+                route = DICTATION_ROUTE,
+                arguments = listOf(navArgument(DAY_ARG) { type = NavType.LongType })
+            ) { entry ->
+                DictationScreen(
+                    epochDay = entry.arguments?.getLong(DAY_ARG) ?: 0L,
+                    onBack = { navController.popBackStack() },
+                    onOpenSettings = {
+                        navController.navigate(DiarioDestination.IMPOSTAZIONI.route)
                     }
                 )
             }
@@ -144,6 +171,9 @@ fun DiarioNavHost(
                     },
                     onOpenVoiceNotes = {
                         navController.navigate(VOICE_ROUTE_PREFIX + epochDay.toString())
+                    },
+                    onOpenDictation = {
+                        navController.navigate(DICTATION_ROUTE_PREFIX + epochDay.toString())
                     }
                 )
             }
@@ -244,4 +274,6 @@ private const val VOICE_ROUTE = VOICE_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val PHOTOS_ROUTE_PREFIX = "foto/"
 private const val PHOTOS_ROUTE = PHOTOS_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val ENTRIES_ROUTE_PREFIX = "voci/"
+private const val DICTATION_ROUTE_PREFIX = "dettatura/"
+private const val DICTATION_ROUTE = DICTATION_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val ENTRIES_ROUTE = ENTRIES_ROUTE_PREFIX + "{" + DAY_ARG + "}"

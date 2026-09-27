@@ -40,7 +40,11 @@ class HistoryViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
-        HistoryUiState(month = YearMonth.from(clock.today()), today = clock.today())
+        HistoryUiState(
+            month = YearMonth.from(clock.today()),
+            today = clock.today(),
+            focusDate = clock.today()
+        )
     )
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
@@ -56,8 +60,11 @@ class HistoryViewModel(
         viewModelScope.launch {
             selectedMonth
                 .flatMapLatest { month ->
-                    val from = month.atDay(1)
-                    val to = month.atEndOfMonth()
+                    // Si carica tutta la griglia, anche i giorni del mese
+                    // prima e dopo: la vista settimana puo' stare a cavallo.
+                    val griglia = monthGrid(month)
+                    val from = griglia.first()
+                    val to = griglia.last()
                     combine(
                         workDayRepository.observeDaysBetween(from, to),
                         settingsRepository.settings
@@ -67,7 +74,12 @@ class HistoryViewModel(
                     val now = clock.now()
                     val today = clock.today()
 
-                    val rows = days
+                    val tutte = days.map { day ->
+                        HistoryRow(day = day, summary = calculator.summarize(day, now, standard))
+                    }
+                    val inMonth = days.filter { YearMonth.from(it.date) == month }
+
+                    val rows = inMonth
                         .sortedByDescending { it.date }
                         .map { day ->
                             HistoryRow(
@@ -76,7 +88,7 @@ class HistoryViewModel(
                             )
                         }
 
-                    val byDate = rows.associateBy { it.day.date }
+                    val byDate = tutte.associateBy { it.day.date }
 
                     val cells = monthGrid(month).map { date ->
                         val row = byDate[date]
@@ -96,7 +108,8 @@ class HistoryViewModel(
                             today = today,
                             rows = rows,
                             cells = cells,
-                            totals = summarizer.totals(days, now, standard)
+                            byDate = byDate,
+                            totals = summarizer.totals(inMonth, now, standard)
                         )
                     }
                 }
@@ -124,7 +137,26 @@ class HistoryViewModel(
 
     fun showList() = _uiState.update { it.copy(view = HistoryView.ELENCO) }
 
-    fun showCalendar() = _uiState.update { it.copy(view = HistoryView.CALENDARIO) }
+    fun showCalendar() = _uiState.update { it.copy(view = HistoryView.MESE) }
+
+    fun showView(view: HistoryView) = _uiState.update { it.copy(view = view) }
+
+    /** Sposta il giorno in primo piano (di un giorno o di una settimana). */
+    fun moveFocus(days: Long) {
+        val nuovo = _uiState.value.focusDate.plusDays(days)
+        if (nuovo.isAfter(clock.today())) return
+        _uiState.update { it.copy(focusDate = nuovo) }
+        // La settimana deve essere dentro la griglia caricata.
+        val serve = YearMonth.from(nuovo)
+        if (serve != _uiState.value.month) {
+            changeMonth(serve)
+            _uiState.update { it.copy(focusDate = nuovo) }
+        }
+    }
+
+    fun focusToday() = moveFocus(
+        java.time.temporal.ChronoUnit.DAYS.between(_uiState.value.focusDate, clock.today())
+    )
 
     fun previousMonth() {
         if (!_uiState.value.canGoBack) return

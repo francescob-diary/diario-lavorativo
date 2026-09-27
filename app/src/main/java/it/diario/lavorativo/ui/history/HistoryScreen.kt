@@ -1,5 +1,9 @@
 package it.diario.lavorativo.ui.history
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -122,17 +126,19 @@ fun HistoryScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            // Quattro modi di guardare lo storico: elenco, mese, settimana, giorno.
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = state.view == HistoryView.ELENCO,
-                    onClick = viewModel::showList,
-                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-                ) { Text("Elenco") }
-                SegmentedButton(
-                    selected = state.view == HistoryView.CALENDARIO,
-                    onClick = viewModel::showCalendar,
-                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-                ) { Text("Calendario") }
+                HistoryView.entries.forEachIndexed { i, v ->
+                    SegmentedButton(
+                        selected = state.view == v,
+                        onClick = { viewModel.showView(v) },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = i,
+                            count = HistoryView.entries.size
+                        ),
+                        icon = {}
+                    ) { Text(v.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
+                }
             }
 
             Spacer(Modifier.height(12.dp))
@@ -142,6 +148,18 @@ fun HistoryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
+
+                state.view == HistoryView.SETTIMANA -> WeekView(
+                    state = state,
+                    onMove = viewModel::moveFocus,
+                    onOpenDay = onOpenDay
+                )
+
+                state.view == HistoryView.GIORNO -> DayView(
+                    state = state,
+                    onMove = viewModel::moveFocus,
+                    onOpenDay = onOpenDay
+                )
 
                 state.isEmpty -> EmptyMonth(state.isCurrentMonth)
 
@@ -404,7 +422,8 @@ private fun CalendarMonth(
                         cell = cell,
                         inMonth = YearMonth.from(cell.date) == state.month,
                         modifier = Modifier.weight(1f),
-                        onClick = { onSelect(cell.date) }
+                        // Un tocco apre direttamente il dettaglio completo.
+                        onClick = { onOpenDay(cell.date) }
                     )
                 }
             }
@@ -544,5 +563,176 @@ private fun EmptyMonth(isCurrentMonth: Boolean) {
                 style = MaterialTheme.typography.bodyMedium
             )
         }
+    }
+}
+
+/** Frecce per spostarsi di un passo avanti o indietro. */
+@Composable
+private fun StepHeader(
+    title: String,
+    canForward: Boolean,
+    onBack: () -> Unit,
+    onForward: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TextButton(onClick = onBack) { Text("<") }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onForward, enabled = canForward) { Text(">") }
+    }
+}
+
+/** Vista settimana: sette righe, una per giorno, con cantiere e ore. */
+@Composable
+private fun WeekView(
+    state: HistoryUiState,
+    onMove: (Long) -> Unit,
+    onOpenDay: (LocalDate) -> Unit
+) {
+    val settimana = state.focusWeek
+    val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.ITALIAN)
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        StepHeader(
+            title = settimana.first().format(fmt) + " - " + settimana.last().format(fmt),
+            canForward = settimana.last().isBefore(state.today),
+            onBack = { onMove(-7) },
+            onForward = { onMove(7) }
+        )
+        Spacer(Modifier.height(8.dp))
+        var totale = java.time.Duration.ZERO
+        settimana.forEach { data ->
+            val row = state.byDate[data]
+            if (row != null && row.day.isClosed) totale = totale.plus(row.summary.net)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp)
+                    .clickable { onOpenDay(data) }
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = data.dayOfMonth.toString() + " " +
+                            data.dayOfWeek.getDisplayName(
+                                java.time.format.TextStyle.SHORT, java.util.Locale.ITALIAN
+                            ),
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(64.dp),
+                        color = when (data.dayOfWeek) {
+                            java.time.DayOfWeek.SUNDAY -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                    Column(Modifier.weight(1f)) {
+                        if (row == null) {
+                            Text(
+                                "Niente registrato",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        } else {
+                            Text(
+                                row.day.allSites.joinToString(" + ") { it.name }
+                                    .ifBlank { "Senza cantiere" },
+                                maxLines = 2
+                            )
+                            Text(timesLabel(row.day), style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (row != null) {
+                        Text(
+                            DurationFormat.short(row.summary.net),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Totale settimana: " + DurationFormat.short(totale),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Vista giorno: il riassunto completo di una giornata, con le frecce. */
+@Composable
+private fun DayView(
+    state: HistoryUiState,
+    onMove: (Long) -> Unit,
+    onOpenDay: (LocalDate) -> Unit
+) {
+    val data = state.focusDate
+    val row = state.byDate[data]
+    Column(Modifier.verticalScroll(rememberScrollState())) {
+        StepHeader(
+            title = data.format(LONG_DATE),
+            canForward = data.isBefore(state.today),
+            onBack = { onMove(-1) },
+            onForward = { onMove(1) }
+        )
+        Spacer(Modifier.height(8.dp))
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                if (row == null) {
+                    Text("Nessuna giornata registrata.")
+                } else {
+                    val day = row.day
+                    Text(timesLabel(day), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Netto " + DurationFormat.short(row.summary.net) +
+                            ", pause " + DurationFormat.short(row.summary.breaks)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text("Cantieri", fontWeight = FontWeight.Bold)
+                    if (day.extraSites.isEmpty()) {
+                        Text(day.site?.name ?: "Senza cantiere")
+                    } else {
+                        val resto = row.summary.net.minusMinutes(day.extraSitesMinutes.toLong())
+                        Text(
+                            (day.site?.name ?: "Principale") + " - " +
+                                DurationFormat.short(if (resto.isNegative) java.time.Duration.ZERO else resto)
+                        )
+                        day.extraSites.forEach {
+                            Text(it.site.name + " - " + DurationFormat.short(it.duration))
+                        }
+                    }
+                    day.description?.takeIf { it.isNotBlank() }?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Lavoro svolto", fontWeight = FontWeight.Bold)
+                        Text(it)
+                    }
+                    if (day.trips.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Spostamenti", fontWeight = FontWeight.Bold)
+                        day.trips.forEach { t ->
+                            Text(t.route.ifBlank { "Spostamento" } +
+                                (t.duration?.let { " (" + DurationFormat.short(it) + ")" } ?: ""))
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { onOpenDay(data) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+        ) {
+            Text(if (row == null) "APRI E REGISTRA" else "APRI IL DETTAGLIO COMPLETO")
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }

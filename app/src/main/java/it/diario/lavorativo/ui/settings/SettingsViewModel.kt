@@ -1,5 +1,7 @@
 package it.diario.lavorativo.ui.settings
 
+import it.diario.lavorativo.domain.model.DailyReminderSettings
+import it.diario.lavorativo.core.reminder.DailyReminderScheduler
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -15,8 +17,26 @@ import kotlinx.coroutines.launch
 
 /** ViewModel delle impostazioni: pochi valori, salvati subito su DataStore. */
 class SettingsViewModel(
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val dailyScheduler: DailyReminderScheduler
 ) : ViewModel() {
+
+    val dailyReminder: StateFlow<DailyReminderSettings> = settingsRepository.dailyReminder
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DailyReminderSettings())
+
+    val modelUri: StateFlow<String?> = settingsRepository.modelUri
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun updateDailyReminder(block: (DailyReminderSettings) -> DailyReminderSettings) =
+        viewModelScope.launch {
+            val nuovo = block(dailyReminder.value)
+            settingsRepository.setDailyReminder(nuovo)
+            dailyScheduler.schedule(nuovo)
+        }
+
+    fun setModelUri(uri: String?) = viewModelScope.launch {
+        settingsRepository.setModelUri(uri)
+    }
 
     val settings: StateFlow<UserSettings> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserSettings())
@@ -38,7 +58,10 @@ class SettingsViewModel(
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                SettingsViewModel(this.diarioContainer.settingsRepository)
+                SettingsViewModel(
+                    this.diarioContainer.settingsRepository,
+                    this.diarioContainer.dailyReminderScheduler
+                )
             }
         }
     }

@@ -1,6 +1,7 @@
 package it.diario.lavorativo.domain.repository
 
 import it.diario.lavorativo.domain.model.ReminderSettings
+import it.diario.lavorativo.domain.model.DailyReminderSettings
 import it.diario.lavorativo.domain.model.UserSettings
 import kotlinx.coroutines.flow.Flow
 
@@ -21,6 +22,17 @@ interface SettingsRepository {
      * lascia. Chiave assente = mai toccato: vale il valore di partenza.
      */
     val exportChoices: Flow<Map<String, Boolean>>
+
+    /** Promemoria di fine giornata per compilare il diario. */
+    val dailyReminder: Flow<DailyReminderSettings>
+
+    suspend fun setDailyReminder(settings: DailyReminderSettings)
+
+    /** File del modello per la dettatura (indirizzo del documento), null se non scelto. */
+    val modelUri: Flow<String?>
+
+    suspend fun setModelUri(uri: String?)
+
 
     suspend fun setExportChoice(key: String, value: Boolean)
 }

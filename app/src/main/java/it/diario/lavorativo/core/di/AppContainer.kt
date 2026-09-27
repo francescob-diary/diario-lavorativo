@@ -109,6 +109,11 @@ class AppContainer(val context: Context) {
 
     val reminderScheduler: ReminderScheduler = ReminderScheduler(context, reminderCalculator)
 
+    val dailyReminderScheduler = it.diario.lavorativo.core.reminder.DailyReminderScheduler(context)
+
+    /** Modello linguistico sul telefono, per la dettatura. */
+    val localLlm = it.diario.lavorativo.core.llm.LocalLlm(context)
+
     val locationProvider: LocationProvider = AndroidLocationProvider(context)
 
     val workDayRepository: WorkDayRepository = WorkDayRepositoryImpl(

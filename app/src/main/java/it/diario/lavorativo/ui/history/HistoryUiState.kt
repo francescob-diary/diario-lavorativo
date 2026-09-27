@@ -30,7 +30,12 @@ data class HistoryRow(
 )
 
 /** Modalita' di visualizzazione: storico e calendario sono la stessa schermata. */
-enum class HistoryView { ELENCO, CALENDARIO }
+enum class HistoryView(val label: String) {
+    ELENCO("Elenco"),
+    MESE("Mese"),
+    SETTIMANA("Settimana"),
+    GIORNO("Giorno")
+}
 
 data class HistoryUiState(
     val loading: Boolean = true,
@@ -42,8 +47,19 @@ data class HistoryUiState(
     val selectedDate: LocalDate? = null,
     val firstRecordedDate: LocalDate? = null,
     val today: LocalDate = LocalDate.now(),
-    val message: String? = null
+    val message: String? = null,
+    /** Giorno attorno a cui ruotano le viste settimana e giorno. */
+    val focusDate: LocalDate = LocalDate.now(),
+    /** Tutte le giornate caricate (anche a cavallo del mese), per data. */
+    val byDate: Map<LocalDate, HistoryRow> = emptyMap()
 ) {
+    /** Lunedi'-domenica della settimana del giorno in primo piano. */
+    val focusWeek: List<LocalDate>
+        get() {
+            val lunedi = focusDate.minusDays((focusDate.dayOfWeek.value - 1).toLong())
+            return (0L..6L).map { lunedi.plusDays(it) }
+        }
+
     val isEmpty: Boolean get() = !loading && rows.isEmpty()
 
     /** Giornata selezionata nel calendario, se ha dati. */

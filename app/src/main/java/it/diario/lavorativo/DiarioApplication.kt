@@ -34,6 +34,11 @@ class DiarioApplication : Application() {
                 val settings = container.settingsRepository.reminder.first()
                 container.reminderScheduler.schedule(settings, LocalDateTime.now())
             }
+            runCatching {
+                val daily = container.settingsRepository.dailyReminder.first()
+                it.diario.lavorativo.core.reminder.DailyReminderScheduler(this@DiarioApplication)
+                    .schedule(daily, LocalDateTime.now())
+            }
         }
     }
 }

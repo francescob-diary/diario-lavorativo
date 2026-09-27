@@ -1,5 +1,6 @@
 package it.diario.lavorativo.core.reminder
 
+import it.diario.lavorativo.domain.service.DailyReminderCalculator
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -36,50 +37,97 @@ import java.time.format.DateTimeFormatter
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            ACTION_WEEKLY_REMINDER -> {
-                showNotification(context)
-                notifyVehicleDues(context)
-                reschedule(context)
+        // goAsync si puo' chiamare una volta sola per ogni ricezione: tutto
+        // il lavoro in sottofondo passa da qui, in fila.
+        val pending = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            try {
+                when (intent.action) {
+                    ACTION_WEEKLY_REMINDER -> {
+                        showNotification(context)
+                        runCatching {
+                            VehicleDueNotifier.notifyIfNeeded(
+                                context.applicationContext,
+                                appContainer(context)
+                            )
+                        }
+                        runCatching { rescheduleWeekly(context) }
+                    }
+                    ACTION_DAILY_REMINDER -> {
+                        runCatching { dailyReminder(context) }
+                        runCatching { rescheduleDaily(context, LocalDateTime.now().plusMinutes(1)) }
+                    }
+                    Intent.ACTION_BOOT_COMPLETED,
+                    Intent.ACTION_MY_PACKAGE_REPLACED -> {
+                        runCatching { rescheduleWeekly(context) }
+                        runCatching { rescheduleDaily(context, LocalDateTime.now()) }
+                    }
+                }
+            } finally {
+                pending.finish()
             }
-            Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED -> reschedule(context)
         }
     }
 
     /** Dopo un riavvio le sveglie di sistema si perdono: vanno riarmate. */
-    private fun reschedule(context: Context) {
-        val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            try {
-                val settings = appContainer(context).settingsRepository.reminder.first()
-                ReminderScheduler(context.applicationContext)
-                    .schedule(settings, LocalDateTime.now())
-            } finally {
-                pending.finish()
-            }
+    private suspend fun rescheduleWeekly(context: Context) {
+        val settings = appContainer(context).settingsRepository.reminder.first()
+        ReminderScheduler(context.applicationContext).schedule(settings, LocalDateTime.now())
+    }
+
+    private suspend fun rescheduleDaily(context: Context, from: LocalDateTime) {
+        val settings = appContainer(context).settingsRepository.dailyReminder.first()
+        DailyReminderScheduler(context.applicationContext).schedule(settings, from)
+    }
+
+    /** Fine giornata: se il diario di oggi non e' ancora compilato, avvisa. */
+    private suspend fun dailyReminder(context: Context) {
+        val oggi = appContainer(context).workDayRepository.getDay(LocalDate.now())
+        if (!DailyReminderCalculator.isDayCompiled(oggi)) {
+            showDailyNotification(context)
         }
     }
 
-    /**
-     * Le scadenze del mezzo viaggiano insieme al promemoria settimanale:
-     * una sveglia sola per due avvisi, cosi' c'e' una cosa in meno che il
-     * telefono puo' spegnere di nascosto.
-     */
-    private fun notifyVehicleDues(context: Context) {
-        val pending = goAsync()
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            try {
-                VehicleDueNotifier.notifyIfNeeded(
-                    context.applicationContext,
-                    appContainer(context)
-                )
-            } catch (e: Exception) {
-                // Un avviso che non parte non deve far cadere il promemoria
-                // del foglio, che e' quello che conta di piu'.
-            } finally {
-                pending.finish()
-            }
+    private fun showDailyNotification(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+                NotificationChannel(
+                    DAILY_CHANNEL_ID,
+                    "Fine giornata",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply { description = "Promemoria per compilare il diario della giornata" }
+            )
+        }
+
+        // Toccando la notifica si apre direttamente la dettatura.
+        val openDictation = PendingIntent.getActivity(
+            context,
+            DAILY_REQUEST_CODE,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(EXTRA_OPEN_DICTATION, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, DAILY_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Com'e' andata oggi?")
+            .setContentText("Tocca e racconta la giornata: il diario si compila da solo.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(openDictation)
+            .build()
+
+        runCatching {
+            NotificationManagerCompat.from(context).notify(DAILY_NOTIFICATION_ID, notification)
         }
     }
 
@@ -136,6 +184,11 @@ class ReminderReceiver : BroadcastReceiver() {
 
     companion object {
         const val ACTION_WEEKLY_REMINDER = "it.diario.lavorativo.PROMEMORIA_SETTIMANALE"
+        const val ACTION_DAILY_REMINDER = "it.diario.lavorativo.PROMEMORIA_GIORNALIERO"
+        const val EXTRA_OPEN_DICTATION = "apri_dettatura"
+        private const val DAILY_CHANNEL_ID = "fine_giornata"
+        private const val DAILY_NOTIFICATION_ID = 4301
+        private const val DAILY_REQUEST_CODE = 4302
         const val EXTRA_OPEN_WEEK = "apri_settimana"
         private const val CHANNEL_ID = "foglio_settimanale"
         private const val NOTIFICATION_ID = 4201

@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.history
 
+import it.diario.lavorativo.ui.components.DictationTextField
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
@@ -78,6 +79,7 @@ fun DayDetailScreen(
     onOpenEntries: () -> Unit = {},
     onOpenPhotos: () -> Unit = {},
     onOpenVoiceNotes: () -> Unit = {},
+    onOpenDictation: () -> Unit = {},
     viewModel: DayDetailViewModel = viewModel(
         key = "day-" + epochDay.toString(),
         factory = DayDetailViewModel.factory(epochDay)
@@ -147,6 +149,13 @@ fun DayDetailScreen(
                 SummaryCard(state)
 
                 Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = onOpenDictation,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                ) { Text("RACCONTA A VOCE QUESTA GIORNATA") }
+
+                Spacer(Modifier.height(8.dp))
 
                 OutlinedButton(
                     onClick = onOpenEntries,
@@ -254,21 +263,20 @@ fun DayDetailScreen(
                     Spacer(Modifier.height(16.dp))
                 }
 
-                OutlinedTextField(
+                DictationTextField(
                     value = state.description,
                     onValueChange = viewModel::onDescription,
-                    label = { Text("Lavoro svolto") },
-                    minLines = 2,
+                    label = "Lavoro svolto",
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(Modifier.height(12.dp))
 
-                OutlinedTextField(
+                DictationTextField(
                     value = state.notes,
                     onValueChange = viewModel::onNotes,
-                    label = { Text("Note") },
-                    minLines = 2,
+                    label = "Note",
+                    supportingText = "Tocca il microfono per dettare",
                     modifier = Modifier.fillMaxWidth()
                 )
 
