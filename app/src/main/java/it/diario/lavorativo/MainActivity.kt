@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.util.Consumer
 import it.diario.lavorativo.domain.model.SharedText
+import it.diario.lavorativo.core.reminder.ReminderReceiver
 import it.diario.lavorativo.core.reminder.ReminderReceiver.Companion.EXTRA_OPEN_WEEK
 import it.diario.lavorativo.ui.navigation.DiarioNavHost
 import it.diario.lavorativo.ui.theme.DiarioLavorativoTheme
