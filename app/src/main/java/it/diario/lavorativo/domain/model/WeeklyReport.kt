@@ -41,6 +41,13 @@ data class WeeklyReport(
  * I giorni senza nulla registrato ci sono lo stesso, vuoti: sul cartellino
  * cartaceo le righe ci sono comunque e servono a far vedere che non e' un buco.
  */
+/** Una parte della giornata passata su un cantiere. */
+data class WeeklySegment(
+    val siteLabel: String,
+    val hours: Duration,
+    val work: String
+)
+
 data class WeeklyDayLine(
     val date: LocalDate,
     val dayType: DayType = DayType.LAVORO,
@@ -55,7 +62,12 @@ data class WeeklyDayLine(
     /** Lavorazioni del giorno, gia' unite in una riga leggibile. */
     val work: String = "",
     /** True se registrata ma mai chiusa. */
-    val incomplete: Boolean = false
+    val incomplete: Boolean = false,
+    /**
+     * Un pezzo per cantiere quando la giornata e' divisa su piu' cantieri.
+     * Vuoto per la giornata normale, con un cantiere solo.
+     */
+    val segments: List<WeeklySegment> = emptyList()
 ) {
     val isWorkDay: Boolean get() = dayType == DayType.LAVORO
 

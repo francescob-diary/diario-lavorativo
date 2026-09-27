@@ -46,6 +46,8 @@ interface DiaryEntryRepository {
     suspend fun getPhoto(id: Long): Photo?
     suspend fun setPhotoCaption(id: Long, caption: String?)
     suspend fun setPhotoLinks(id: Long, activityId: Long?, eventId: Long?)
+    /** Assegna in blocco un gruppo di foto a un cantiere. */
+    suspend fun setPhotosSite(ids: List<Long>, siteId: Long?)
     /** Nomi dei file ancora referenziati, per ripulire quelli orfani. */
     suspend fun knownPhotoFiles(): Set<String>
     suspend fun totalPhotoBytes(): Long

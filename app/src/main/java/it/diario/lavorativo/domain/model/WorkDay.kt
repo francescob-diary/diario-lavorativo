@@ -31,6 +31,10 @@ data class WorkDay(
      * abbassare la media dei chilometri del mese.
      */
     val travelKm: Int? = null,
+    /** Cantieri oltre al principale, con le ore fatte su ciascuno. */
+    val extraSites: List<DaySite> = emptyList(),
+    /** Spostamenti della giornata. Mai nel rapportino. */
+    val trips: List<Trip> = emptyList(),
     val createdAt: Instant = Instant.EPOCH,
     val updatedAt: Instant = Instant.EPOCH
 ) {
@@ -39,4 +43,10 @@ data class WorkDay(
     val isRunning: Boolean get() = isStarted && !isClosed
     val openBreak: WorkBreak? get() = breaks.firstOrNull { it.isOpen }
     val isOnBreak: Boolean get() = isRunning && openBreak != null
+
+    /** Minuti assegnati ai cantieri in piu': il resto va al principale. */
+    val extraSitesMinutes: Int get() = extraSites.sumOf { it.minutes }
+
+    /** Tutti i cantieri della giornata, il principale per primo. */
+    val allSites: List<Site> get() = listOfNotNull(site) + extraSites.map { it.site }
 }

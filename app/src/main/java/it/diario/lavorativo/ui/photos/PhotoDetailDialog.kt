@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.platform.LocalContext
 import it.diario.lavorativo.core.di.appContainer
 import it.diario.lavorativo.domain.model.Photo
+import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.WorkActivity
 import it.diario.lavorativo.domain.model.WorkEvent
 import it.diario.lavorativo.ui.entries.label
@@ -61,9 +62,12 @@ fun PhotoDetailDialog(
     onLinkActivity: (Long?) -> Unit,
     onLinkEvent: (Long?) -> Unit,
     onDelete: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    sites: List<Site> = emptyList(),
+    onSite: (Long?) -> Unit = {}
 ) {
     var confirmDelete by remember { mutableStateOf(false) }
+    var sito by remember(photo.id) { mutableStateOf(photo.siteId) }
     var caption by remember(photo.id) { mutableStateOf(photo.caption.orEmpty()) }
 
     val context = LocalContext.current
@@ -113,6 +117,31 @@ fun PhotoDetailDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                if (sites.size > 1) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = "Cantiere",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        sites.forEach { site ->
+                            FilterChip(
+                                selected = sito == site.id,
+                                onClick = {
+                                    sito = site.id
+                                    onSite(site.id)
+                                },
+                                label = { Text(site.name) }
+                            )
+                        }
+                    }
+                }
 
                 if (activities.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))

@@ -75,7 +75,11 @@ class StatisticsCalculator(
             sites = siteBreakdown(days, now, standardMinutes),
             categories = categoryBreakdown(activities),
             eventDays = events.map { it.workDayId }.distinct().size,
-            unresolvedEvents = events.count { it.unresolved }
+            unresolvedEvents = events.count { it.unresolved },
+            tripCount = days.sumOf { it.trips.size },
+            travelTime = days.flatMap { it.trips }
+                .mapNotNull { it.duration }
+                .fold(Duration.ZERO) { acc, d -> acc.plus(d) }
         )
     }
 
@@ -178,19 +182,34 @@ class StatisticsCalculator(
         days: List<WorkDay>,
         now: Instant,
         standardMinutes: Int
-    ): List<SiteHours> = days
-        .filter { it.dayType == DayType.LAVORO && it.isStarted }
-        .groupBy { it.site?.name ?: NO_SITE }
-        .map { (name, group) ->
-            SiteHours(
-                siteName = name,
-                net = group.fold(Duration.ZERO) { acc, day ->
-                    acc.plus(calculator.summarize(day, now, standardMinutes).net)
-                },
-                days = group.count { it.isClosed }
-            )
-        }
-        .sortedByDescending { it.net }
+    ): List<SiteHours> {
+        // Ogni giornata si spezza sui suoi cantieri: gli altri prendono le
+        // ore segnate su di loro, il principale il resto.
+        data class Pezzo(val name: String, val net: Duration, val date: java.time.LocalDate, val closed: Boolean)
+
+        val pezzi = days
+            .filter { it.dayType == DayType.LAVORO && it.isStarted }
+            .flatMap { day ->
+                val net = calculator.summarize(day, now, standardMinutes).net
+                val extra = day.extraSites.map {
+                    Pezzo(it.site.name, it.duration, day.date, day.isClosed)
+                }
+                val resto = net.minusMinutes(day.extraSitesMinutes.toLong())
+                    .let { if (it.isNegative) Duration.ZERO else it }
+                listOf(Pezzo(day.site?.name ?: NO_SITE, resto, day.date, day.isClosed)) + extra
+            }
+
+        return pezzi
+            .groupBy { it.name }
+            .map { (name, group) ->
+                SiteHours(
+                    siteName = name,
+                    net = group.fold(Duration.ZERO) { acc, p -> acc.plus(p.net) },
+                    days = group.filter { it.closed }.map { it.date }.distinct().size
+                )
+            }
+            .sortedByDescending { it.net }
+    }
 
     /** Lavorazioni piu' frequenti, dalla piu' registrata alla meno. */
     fun categoryBreakdown(activities: List<WorkActivity>): List<CategoryCount> = activities

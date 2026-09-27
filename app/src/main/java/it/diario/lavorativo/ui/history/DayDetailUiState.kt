@@ -1,5 +1,10 @@
 package it.diario.lavorativo.ui.history
 
+import it.diario.lavorativo.domain.model.DaySite
+import it.diario.lavorativo.domain.model.Trip
+import it.diario.lavorativo.domain.model.WorkActivity
+import it.diario.lavorativo.domain.model.Photo
+
 import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.WorkBreak
@@ -31,6 +36,11 @@ data class DayDetailUiState(
     val travelKm: String = "",
     val summary: WorkTimeSummary = WorkTimeSummary(),
     val isRunning: Boolean = false,
+    val extraSites: List<DaySite> = emptyList(),
+    val trips: List<Trip> = emptyList(),
+    val activities: List<WorkActivity> = emptyList(),
+    val photos: List<Photo> = emptyList(),
+    val zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
     val dirty: Boolean = false,
     val message: String? = null
 ) {
@@ -43,4 +53,11 @@ data class DayDetailUiState(
         }
 
     val canSave: Boolean get() = exists && dirty
+
+    /** Ore del cantiere principale: il resto della giornata. */
+    val mainSiteHours: java.time.Duration
+        get() {
+            val resto = summary.net.minusMinutes(extraSites.sumOf { it.minutes }.toLong())
+            return if (resto.isNegative) java.time.Duration.ZERO else resto
+        }
 }

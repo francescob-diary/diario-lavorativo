@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.settings
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -132,7 +133,7 @@ fun SettingsScreen(
 
         Button(
             onClick = onOpenExport,
-            modifier = Modifier.fillMaxWidth().height(64.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
         ) {
             Text("ESPORTA E INVIA")
         }
@@ -149,7 +150,7 @@ fun SettingsScreen(
 
         OutlinedButton(
             onClick = onOpenVehicle,
-            modifier = Modifier.fillMaxWidth().height(64.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
         ) {
             Text("MEZZO AZIENDALE")
         }
@@ -166,7 +167,7 @@ fun SettingsScreen(
 
         OutlinedButton(
             onClick = onOpenBackup,
-            modifier = Modifier.fillMaxWidth().height(64.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
         ) {
             Text("BACKUP E RIPRISTINO")
         }

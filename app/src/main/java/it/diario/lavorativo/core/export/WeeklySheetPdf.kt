@@ -232,6 +232,29 @@ object WeeklySheetPdf {
             line.work
         }
 
+        if (line.segments.size > 1) {
+            // Giornata su piu' cantieri: la casella si divide in fasce, una
+            // per cantiere, ognuna con le sue ore e la sua lavorazione.
+            val fascia = DATA_ROW_HEIGHT / line.segments.size
+            val righe = (fascia / 11f).toInt().coerceAtLeast(1)
+            line.segments.forEachIndexed { i, seg ->
+                val y = top + i * fascia
+                if (i > 0) {
+                    canvas.drawLine(
+                        MARGIN + widths[0], y,
+                        MARGIN + widths[0] + widths[1] + widths[2] + widths[3], y,
+                        THIN
+                    )
+                }
+                cell(canvas, MARGIN + widths[0], widths[1], y, seg.siteLabel, maxLines = righe, firstLine = 12f)
+                cell(canvas, MARGIN + widths[0] + widths[1], widths[2], y,
+                    DurationFormat.decimalHours(seg.hours), centered = true, maxLines = 1, firstLine = 12f)
+                cell(canvas, MARGIN + widths[0] + widths[1] + widths[2], widths[3], y, seg.work,
+                    maxLines = righe, firstLine = 12f)
+            }
+            return bottom
+        }
+
         cell(canvas, MARGIN + widths[0], widths[1], top, line.siteLabel.orEmpty())
         cell(canvas, MARGIN + widths[0] + widths[1], widths[2], top,
             if (line.isWorkDay) DurationFormat.decimalHours(line.net) else "",
@@ -267,13 +290,15 @@ object WeeklySheetPdf {
         width: Float,
         top: Float,
         text: String,
-        centered: Boolean = false
+        centered: Boolean = false,
+        maxLines: Int = 3,
+        firstLine: Float = 16f
     ) {
         if (text.isBlank()) return
 
         val paint = if (centered) BODY_CENTERED else BODY
-        val righe = wrap(text, width - 8f, paint).take(3)
-        var y = top + 16f
+        val righe = wrap(text, width - 8f, paint).take(maxLines)
+        var y = top + firstLine
         righe.forEach { riga ->
             canvas.drawText(riga, if (centered) x + width / 2f else x + 4f, y, paint)
             y += 11f
@@ -390,6 +415,12 @@ object WeeklySheetPdf {
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         textAlign = Paint.Align.CENTER
         isAntiAlias = true
+    }
+
+    private val THIN = Paint().apply {
+        color = Color.rgb(120, 120, 120)
+        strokeWidth = 0.6f
+        style = Paint.Style.STROKE
     }
 
     private val BORDER = Paint().apply {

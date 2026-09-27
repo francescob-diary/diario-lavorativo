@@ -54,7 +54,10 @@ data class StatsSummary(
     val sites: List<SiteHours> = emptyList(),
     val categories: List<CategoryCount> = emptyList(),
     val eventDays: Int = 0,
-    val unresolvedEvents: Int = 0
+    val unresolvedEvents: Int = 0,
+    /** Spostamenti registrati nel periodo e tempo passato in viaggio. */
+    val tripCount: Int = 0,
+    val travelTime: Duration = Duration.ZERO
 ) {
     val hasData: Boolean get() = totals.hasData
 

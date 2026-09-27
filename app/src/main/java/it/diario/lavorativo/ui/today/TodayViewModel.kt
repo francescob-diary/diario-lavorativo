@@ -13,6 +13,8 @@ import it.diario.lavorativo.domain.model.BreakType
 import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.UserSettings
 import it.diario.lavorativo.domain.model.WorkDay
+import it.diario.lavorativo.domain.model.Trip
+import it.diario.lavorativo.ui.day.ExtraSiteInput
 import it.diario.lavorativo.domain.model.WorkTimeSummary
 import it.diario.lavorativo.domain.repository.SettingsRepository
 import it.diario.lavorativo.domain.repository.SiteRepository
@@ -196,6 +198,24 @@ class TodayViewModel(
             workDayRepository.endBreak(open.id, clock.now())
         }
     }
+
+    fun saveExtraSite(input: ExtraSiteInput) = viewModelScope.launch {
+        val day = uiState.value.day ?: return@launch
+        if (input.id == 0L) {
+            workDayRepository.addExtraSite(day.id, input.siteId, input.minutes, input.description)
+        } else {
+            workDayRepository.updateExtraSite(input.id, input.siteId, input.minutes, input.description)
+        }
+    }
+
+    fun deleteExtraSite(id: Long) = viewModelScope.launch { workDayRepository.deleteExtraSite(id) }
+
+    fun saveTrip(trip: Trip) = viewModelScope.launch {
+        val day = uiState.value.day ?: return@launch
+        workDayRepository.saveTrip(trip.copy(workDayId = day.id))
+    }
+
+    fun deleteTrip(id: Long) = viewModelScope.launch { workDayRepository.deleteTrip(id) }
 
     fun selectSite(siteId: Long?) = viewModelScope.launch {
         val day = uiState.value.day

@@ -48,6 +48,9 @@ interface PhotoDao {
     @Query("UPDATE photos SET activityId = :activityId, eventId = :eventId WHERE id = :id")
     suspend fun setLinks(id: Long, activityId: Long?, eventId: Long?)
 
+    @Query("UPDATE photos SET siteId = :siteId WHERE id IN (:ids)")
+    suspend fun setSite(ids: List<Long>, siteId: Long?)
+
     // ---- backup: lettura e riscrittura totali ----
 
     @Query("SELECT * FROM photos ORDER BY takenAt ASC")

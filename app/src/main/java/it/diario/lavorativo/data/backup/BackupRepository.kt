@@ -44,6 +44,8 @@ class BackupRepository(
             vehicleExpenses = database.vehicleExpenseDao().allForBackup()
                 .map { it.toBackup() },
             maintenances = database.maintenanceDao().allForBackup().map { it.toBackup() },
+            daySites = database.daySiteDao().allForBackup().map { it.toBackup() },
+            trips = database.tripDao().allForBackup().map { it.toBackup() },
             settings = BackupSettings(
                 userName = user.userName,
                 standardWorkMinutes = user.standardWorkMinutes,
@@ -69,6 +71,8 @@ class BackupRepository(
             // Le spese del mezzo puntano sia al mezzo sia alla giornata:
             // vanno tolte prima di tutte e due.
             database.vehicleExpenseDao().deleteAllForRestore()
+            database.daySiteDao().deleteAllForRestore()
+            database.tripDao().deleteAllForRestore()
             database.fuelStopDao().deleteAllForRestore()
             database.maintenanceDao().deleteAllForRestore()
             database.vehicleDao().deleteAllForRestore()
@@ -85,6 +89,18 @@ class BackupRepository(
             database.siteDao().insertAllForRestore(content.sites.map { it.toEntity() })
             database.workDayDao().insertAllForRestore(content.workDays.map { it.toEntity() })
             database.breakDao().insertAllForRestore(content.breaks.map { it.toEntity() })
+            // Solo cantieri extra che puntano a righe esistenti: un backup
+            // incompleto non deve far cadere tutto il ripristino.
+            val giornate = content.workDays.map { it.id }.toSet()
+            val cantieri = content.sites.map { it.id }.toSet()
+            database.daySiteDao().insertAllForRestore(
+                content.daySites
+                    .filter { it.workDayId in giornate && it.siteId in cantieri }
+                    .map { it.toEntity() }
+            )
+            database.tripDao().insertAllForRestore(
+                content.trips.filter { it.workDayId in giornate }.map { it.toEntity() }
+            )
             database.activityDao().insertAllForRestore(content.activities.map { it.toEntity() })
             database.eventDao().insertAllForRestore(content.events.map { it.toEntity() })
             database.communicationDao()

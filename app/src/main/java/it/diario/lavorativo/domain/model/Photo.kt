@@ -35,7 +35,9 @@ data class Photo(
     val source: PhotoSource = PhotoSource.FOTOCAMERA,
     /** Dimensione in byte, per sapere quanto spazio occupano. */
     val sizeBytes: Long = 0L,
-    val createdAt: Instant = Instant.EPOCH
+    val createdAt: Instant = Instant.EPOCH,
+    /** Cantiere della foto: una giornata puo' averne due. */
+    val siteId: Long? = null
 ) {
     val isLinked: Boolean get() = activityId != null || eventId != null
     val isInGallery: Boolean get() = !galleryUri.isNullOrBlank()

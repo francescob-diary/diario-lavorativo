@@ -60,6 +60,8 @@ fun BigActionButton(
                 } else {
                     MaterialTheme.typography.titleMedium
                 },
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 2,
                 modifier = Modifier.padding(start = 12.dp)
             )
         }

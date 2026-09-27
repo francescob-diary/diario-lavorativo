@@ -149,6 +149,30 @@ object BackupSerializer {
                     put("source", p.source)
                     put("sizeBytes", p.sizeBytes)
                     put("createdAt", p.createdAt)
+                    put("siteId", p.siteId)
+                }
+            })
+            putArray("daySites", content.daySites.map { d ->
+                jsonObject {
+                    put("id", d.id)
+                    put("workDayId", d.workDayId)
+                    put("siteId", d.siteId)
+                    put("minutes", d.minutes)
+                    put("description", d.description)
+                    put("sortOrder", d.sortOrder)
+                    put("createdAt", d.createdAt)
+                }
+            })
+            putArray("trips", content.trips.map { t ->
+                jsonObject {
+                    put("id", t.id)
+                    put("workDayId", t.workDayId)
+                    put("departTime", t.departTime)
+                    put("arriveTime", t.arriveTime)
+                    put("fromPlace", t.fromPlace)
+                    put("toPlace", t.toPlace)
+                    put("notes", t.notes)
+                    put("createdAt", t.createdAt)
                 }
             })
             putArray("voiceNotes", content.voiceNotes.map { v ->
@@ -291,6 +315,8 @@ object BackupSerializer {
             fuelStops = root.objects("fuelStops").mapNotNull { readFuelStop(it) },
             vehicleExpenses = root.objects("vehicleExpenses").mapNotNull { readExpense(it) },
             maintenances = root.objects("maintenances").mapNotNull { readMaintenance(it) },
+            daySites = root.objects("daySites").mapNotNull { readDaySite(it) },
+            trips = root.objects("trips").mapNotNull { readTrip(it) },
             settings = (root["settings"] as? JsonValue.Obj)?.let { s ->
                 BackupSettings(
                     userName = s.string("userName"),
@@ -341,7 +367,9 @@ object BackupSerializer {
             (root.objects("vehicles").size - content.vehicles.size) +
             (root.objects("fuelStops").size - content.fuelStops.size) +
             (root.objects("vehicleExpenses").size - content.vehicleExpenses.size) +
-            (root.objects("maintenances").size - content.maintenances.size)
+            (root.objects("maintenances").size - content.maintenances.size) +
+            (root.objects("daySites").size - content.daySites.size) +
+            (root.objects("trips").size - content.trips.size)
     } catch (e: JsonException) {
         0
     }
@@ -480,6 +508,37 @@ object BackupSerializer {
             takenAt = o.long("takenAt"),
             source = o.stringOrNull("source") ?: "FOTOCAMERA",
             sizeBytes = o.long("sizeBytes"),
+            createdAt = o.long("createdAt"),
+            siteId = o.longOrNull("siteId")
+        )
+    }
+
+    private fun readDaySite(o: JsonValue.Obj): BackupDaySite? {
+        val id = o.longOrNull("id") ?: return null
+        val workDayId = o.longOrNull("workDayId") ?: return null
+        val siteId = o.longOrNull("siteId") ?: return null
+        return BackupDaySite(
+            id = id,
+            workDayId = workDayId,
+            siteId = siteId,
+            minutes = o.int("minutes", 0),
+            description = o.stringOrNull("description"),
+            sortOrder = o.int("sortOrder", 0),
+            createdAt = o.long("createdAt")
+        )
+    }
+
+    private fun readTrip(o: JsonValue.Obj): BackupTrip? {
+        val id = o.longOrNull("id") ?: return null
+        val workDayId = o.longOrNull("workDayId") ?: return null
+        return BackupTrip(
+            id = id,
+            workDayId = workDayId,
+            departTime = o.longOrNull("departTime"),
+            arriveTime = o.longOrNull("arriveTime"),
+            fromPlace = o.stringOrNull("fromPlace"),
+            toPlace = o.stringOrNull("toPlace"),
+            notes = o.stringOrNull("notes"),
             createdAt = o.long("createdAt")
         )
     }

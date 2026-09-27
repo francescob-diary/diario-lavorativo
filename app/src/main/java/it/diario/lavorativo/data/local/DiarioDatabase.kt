@@ -16,6 +16,8 @@ import it.diario.lavorativo.data.local.dao.VehicleExpenseDao
 import it.diario.lavorativo.data.local.dao.MaintenanceDao
 import it.diario.lavorativo.data.local.dao.SiteDao
 import it.diario.lavorativo.data.local.dao.WorkDayDao
+import it.diario.lavorativo.data.local.dao.DaySiteDao
+import it.diario.lavorativo.data.local.dao.TripDao
 import it.diario.lavorativo.data.local.entity.ActivityEntity
 import it.diario.lavorativo.data.local.entity.BreakEntity
 import it.diario.lavorativo.data.local.entity.CommunicationEntity
@@ -28,12 +30,15 @@ import it.diario.lavorativo.data.local.entity.VehicleExpenseEntity
 import it.diario.lavorativo.data.local.entity.MaintenanceEntity
 import it.diario.lavorativo.data.local.entity.SiteEntity
 import it.diario.lavorativo.data.local.entity.WorkDayEntity
+import it.diario.lavorativo.data.local.entity.DaySiteEntity
+import it.diario.lavorativo.data.local.entity.TripEntity
 import it.diario.lavorativo.data.local.migration.MIGRATION_1_2
 import it.diario.lavorativo.data.local.migration.MIGRATION_2_3
 import it.diario.lavorativo.data.local.migration.MIGRATION_3_4
 import it.diario.lavorativo.data.local.migration.MIGRATION_4_5
 import it.diario.lavorativo.data.local.migration.MIGRATION_5_6
 import it.diario.lavorativo.data.local.migration.MIGRATION_6_7
+import it.diario.lavorativo.data.local.migration.MIGRATION_7_8
 
 /**
  * Database locale dell'app.
@@ -49,6 +54,7 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_6_7
  * version 6: mezzo aziendale (vehicles, fuel_stops, vehicle_expenses,
  *            maintenances) e colonna travelKm sulle giornate.
  * version 7: campo workInProgress (lavoro in corso) sui cantieri.
+ * version 8: tabelle day_sites e trips, colonna siteId sulle foto.
  */
 @Database(
     entities = [
@@ -63,9 +69,11 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_6_7
         VehicleEntity::class,
         FuelStopEntity::class,
         VehicleExpenseEntity::class,
-        MaintenanceEntity::class
+        MaintenanceEntity::class,
+        DaySiteEntity::class,
+        TripEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 abstract class DiarioDatabase : RoomDatabase() {
@@ -82,6 +90,8 @@ abstract class DiarioDatabase : RoomDatabase() {
     abstract fun fuelStopDao(): FuelStopDao
     abstract fun vehicleExpenseDao(): VehicleExpenseDao
     abstract fun maintenanceDao(): MaintenanceDao
+    abstract fun daySiteDao(): DaySiteDao
+    abstract fun tripDao(): TripDao
 
     companion object {
         private const val DB_NAME = "diario_lavorativo.db"
@@ -106,7 +116,8 @@ abstract class DiarioDatabase : RoomDatabase() {
                     MIGRATION_3_4,
                     MIGRATION_4_5,
                     MIGRATION_5_6,
-                    MIGRATION_6_7
+                    MIGRATION_6_7,
+                    MIGRATION_7_8
                 )
                 // WAL: scritture piu' veloci e letture non bloccate (utile in cantiere).
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)

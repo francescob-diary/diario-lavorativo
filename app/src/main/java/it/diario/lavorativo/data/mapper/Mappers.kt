@@ -21,6 +21,9 @@ import it.diario.lavorativo.domain.model.WorkActivity
 import it.diario.lavorativo.domain.model.WorkEvent
 import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.domain.model.Site
+import it.diario.lavorativo.domain.model.DaySite
+import it.diario.lavorativo.domain.model.Trip
+import it.diario.lavorativo.data.local.entity.TripEntity
 import it.diario.lavorativo.domain.model.SiteStatus
 import it.diario.lavorativo.domain.model.WorkBreak
 import it.diario.lavorativo.domain.model.WorkDay
@@ -100,6 +103,20 @@ fun WorkDayWithDetails.toDomain(): WorkDay = WorkDay(
     notes = workDay.notes,
     standardMinutesOverride = workDay.standardMinutesOverride,
     travelKm = workDay.travelKm,
+    extraSites = extraSites
+        .sortedWith(compareBy({ it.daySite.sortOrder }, { it.daySite.id }))
+        .mapNotNull { row ->
+            row.site?.let { s ->
+                DaySite(
+                    id = row.daySite.id,
+                    workDayId = row.daySite.workDayId,
+                    site = s.toDomain(),
+                    minutes = row.daySite.minutes,
+                    description = row.daySite.description
+                )
+            }
+        },
+    trips = trips.map { it.toDomain() }.sortedBy { it.departTime ?: it.arriveTime },
     createdAt = workDay.createdAt.toInstant(),
     updatedAt = workDay.updatedAt.toInstant()
 )
@@ -217,7 +234,8 @@ fun PhotoEntity.toDomain(): Photo = Photo(
     takenAt = takenAt.toInstant(),
     source = PhotoSource.fromStorage(source),
     sizeBytes = sizeBytes,
-    createdAt = createdAt.toInstant()
+    createdAt = createdAt.toInstant(),
+    siteId = siteId
 )
 
 fun Photo.toEntity(): PhotoEntity = PhotoEntity(
@@ -231,5 +249,27 @@ fun Photo.toEntity(): PhotoEntity = PhotoEntity(
     takenAt = takenAt.toEpochMillisLong(),
     source = source.name,
     sizeBytes = sizeBytes,
-    createdAt = createdAt.toEpochMillisLong()
+    createdAt = createdAt.toEpochMillisLong(),
+    siteId = siteId
+)
+
+fun TripEntity.toDomain(): Trip = Trip(
+    id = id,
+    workDayId = workDayId,
+    departTime = departTime?.toInstant(),
+    arriveTime = arriveTime?.toInstant(),
+    fromPlace = fromPlace,
+    toPlace = toPlace,
+    notes = notes
+)
+
+fun Trip.toEntity(createdAt: Long): TripEntity = TripEntity(
+    id = id,
+    workDayId = workDayId,
+    departTime = departTime?.toEpochMilli(),
+    arriveTime = arriveTime?.toEpochMilli(),
+    fromPlace = fromPlace?.trim()?.ifBlank { null },
+    toPlace = toPlace?.trim()?.ifBlank { null },
+    notes = notes?.trim()?.ifBlank { null },
+    createdAt = createdAt
 )

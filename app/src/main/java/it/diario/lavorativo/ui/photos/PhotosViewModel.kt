@@ -12,6 +12,7 @@ import it.diario.lavorativo.core.photo.PhotoStorage
 import it.diario.lavorativo.core.time.AppClock
 import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.domain.model.Photo
+import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.PhotoSource
 import it.diario.lavorativo.domain.model.WorkActivity
 import it.diario.lavorativo.domain.model.WorkEvent
@@ -35,8 +36,17 @@ data class PhotosUiState(
     val importing: Boolean = false,
     /** Foto aperta a schermo intero, null se si sta guardando la griglia. */
     val openPhoto: Photo? = null,
-    val message: String? = null
+    val message: String? = null,
+    /** Cantieri della giornata, il principale per primo. */
+    val daySites: List<Site> = emptyList(),
+    /** Foto appena importate che aspettano di sapere a che cantiere vanno. */
+    val awaitingSite: List<Long> = emptyList(),
+    /** Avanzamento dell'importazione in blocco: fatte / totali. */
+    val importDone: Int = 0,
+    val importTotal: Int = 0
 ) {
+    fun siteName(id: Long?): String? = daySites.firstOrNull { it.id == id }?.name
+
     val isEmpty: Boolean get() = !loading && photos.isEmpty()
 }
 
@@ -68,6 +78,11 @@ class PhotosViewModel(
     }
 
     private fun observe(workDayId: Long) {
+        viewModelScope.launch {
+            workDayRepository.observeDay(date).collect { day ->
+                _uiState.update { it.copy(daySites = day?.allSites.orEmpty()) }
+            }
+        }
         viewModelScope.launch {
             entryRepository.observePhotos(workDayId).collect { list ->
                 _uiState.update { it.copy(photos = list) }
@@ -110,12 +125,63 @@ class PhotosViewModel(
             return@launch
         }
         gallery.publish(uri)
-        importInto(uri, PhotoSource.FOTOCAMERA, galleryUri = uri.toString())
+        val id = importInto(uri, PhotoSource.FOTOCAMERA, galleryUri = uri.toString())
+        assignOrAsk(listOfNotNull(id))
     }
 
     /** Foto scelta dalla galleria: e' gia' li', si importa solo la copia. */
-    fun onGalleryPicked(uri: Uri) = viewModelScope.launch {
-        importInto(uri, PhotoSource.GALLERIA, galleryUri = uri.toString())
+    fun onGalleryPicked(uri: Uri) = onGalleryPickedMany(listOf(uri))
+
+    /**
+     * Piu' foto scelte insieme dalla galleria: si importano tutte, poi si
+     * chiede una volta sola a che cantiere vanno.
+     */
+    fun onGalleryPickedMany(uris: List<Uri>) = viewModelScope.launch {
+        if (uris.isEmpty()) return@launch
+        _uiState.update { it.copy(importTotal = uris.size, importDone = 0) }
+        val ids = mutableListOf<Long>()
+        uris.forEachIndexed { i, uri ->
+            importInto(uri, PhotoSource.GALLERIA, galleryUri = uri.toString(), quiet = true)
+                ?.let { ids += it }
+            _uiState.update { it.copy(importDone = i + 1) }
+        }
+        _uiState.update {
+            it.copy(
+                importTotal = 0,
+                importDone = 0,
+                message = when {
+                    ids.size == uris.size && ids.size == 1 -> "Foto salvata"
+                    ids.size == uris.size -> ids.size.toString() + " foto salvate"
+                    else -> ids.size.toString() + " foto salvate su " + uris.size.toString()
+                }
+            )
+        }
+        assignOrAsk(ids)
+    }
+
+    /**
+     * Un cantiere solo: le foto vanno li' senza chiedere. Piu' cantieri:
+     * si chiede. Nessun cantiere: restano senza, si potranno assegnare dopo.
+     */
+    private suspend fun assignOrAsk(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val sites = _uiState.value.daySites
+        when {
+            sites.size == 1 -> entryRepository.setPhotosSite(ids, sites.first().id)
+            sites.size > 1 -> _uiState.update { it.copy(awaitingSite = ids) }
+        }
+    }
+
+    /** Risposta alla domanda "a che cantiere vanno queste foto?". */
+    fun assignPendingTo(siteId: Long?) = viewModelScope.launch {
+        val ids = _uiState.value.awaitingSite
+        _uiState.update { it.copy(awaitingSite = emptyList()) }
+        entryRepository.setPhotosSite(ids, siteId)
+    }
+
+    /** Sposta una foto sola su un altro cantiere. */
+    fun setPhotoSite(photoId: Long, siteId: Long?) = viewModelScope.launch {
+        entryRepository.setPhotosSite(listOf(photoId), siteId)
     }
 
     /**
@@ -123,14 +189,20 @@ class PhotosViewModel(
      * L'originale a piena risoluzione resta in galleria: la copia serve alle
      * miniature e al PDF, e tenere due volte otto megapixel non avrebbe senso.
      */
-    private suspend fun importInto(uri: Uri, source: PhotoSource, galleryUri: String?) {
+    private suspend fun importInto(
+        uri: Uri,
+        source: PhotoSource,
+        galleryUri: String?,
+        quiet: Boolean = false
+    ): Long? {
         _uiState.update { it.copy(importing = true) }
         val dayId = ensureDay()
         val now = clock.now()
+        var saved: Long? = null
 
         storage.importFrom(uri, now, clock.zone())
             .onSuccess { stored ->
-                entryRepository.savePhoto(
+                saved = entryRepository.savePhoto(
                     Photo(
                         workDayId = dayId,
                         fileName = stored.fileName,
@@ -140,13 +212,19 @@ class PhotosViewModel(
                         sizeBytes = stored.sizeBytes
                     )
                 )
-                _uiState.update { it.copy(importing = false, message = "Foto salvata") }
+                _uiState.update {
+                    it.copy(importing = false, message = if (quiet) it.message else "Foto salvata")
+                }
             }
             .onFailure {
                 _uiState.update {
-                    it.copy(importing = false, message = "Non sono riuscito a salvare la foto")
+                    it.copy(
+                        importing = false,
+                        message = if (quiet) it.message else "Non sono riuscito a salvare la foto"
+                    )
                 }
             }
+        return saved
     }
 
     fun openPhoto(photo: Photo) = _uiState.update { it.copy(openPhoto = photo) }

@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.backup
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -139,7 +140,7 @@ fun BackupScreen(
             Button(
                 onClick = { salvaFile.launch(viewModel.suggestedFileName()) },
                 enabled = !state.working,
-                modifier = Modifier.fillMaxWidth().height(64.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
             ) {
                 Text("SALVA IL BACKUP")
             }
@@ -197,7 +198,7 @@ fun BackupScreen(
             OutlinedButton(
                 onClick = { apriFile.launch(arrayOf("application/zip", "*/*")) },
                 enabled = !state.working,
-                modifier = Modifier.fillMaxWidth().height(64.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
             ) {
                 Text("SCEGLI UN FILE DI BACKUP")
             }

@@ -13,6 +13,9 @@ import it.diario.lavorativo.domain.model.WorkDay
 import it.diario.lavorativo.domain.repository.SettingsRepository
 import it.diario.lavorativo.domain.repository.SiteRepository
 import it.diario.lavorativo.domain.repository.WorkDayRepository
+import it.diario.lavorativo.domain.repository.DiaryEntryRepository
+import it.diario.lavorativo.domain.model.Trip
+import it.diario.lavorativo.ui.day.ExtraSiteInput
 import it.diario.lavorativo.domain.service.WorkTimeCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +40,7 @@ import java.time.LocalTime
  */
 class DayDetailViewModel(
     private val workDayRepository: WorkDayRepository,
+    private val entryRepository: DiaryEntryRepository,
     private val siteRepository: SiteRepository,
     private val settingsRepository: SettingsRepository,
     private val calculator: WorkTimeCalculator,
@@ -61,7 +65,15 @@ class DayDetailViewModel(
                 // Se l'utente ha modifiche non salvate non si sovrascrive il form
                 // con i dati del database: si aggiorna solo la lista dei cantieri.
                 if (_uiState.value.dirty) {
-                    _uiState.update { it.copy(availableSites = sites) }
+                    // Cantieri in piu' e spostamenti si salvano subito:
+                    // si aggiornano anche col modulo modificato.
+                    _uiState.update {
+                        it.copy(
+                            availableSites = sites,
+                            extraSites = day?.extraSites.orEmpty(),
+                            trips = day?.trips.orEmpty()
+                        )
+                    }
                     return@collect
                 }
                 applyDay(day, sites, standard)
@@ -99,9 +111,55 @@ class DayDetailViewModel(
                 travelKm = day.travelKm?.toString().orEmpty(),
                 summary = calculator.summarize(day, clock.now(), standard),
                 isRunning = day.isRunning,
+                extraSites = day.extraSites,
+                trips = day.trips,
+                zone = zone,
                 dirty = false
             )
         }
+        observeEntries(day.id)
+    }
+
+    private var entriesFor: Long = 0L
+
+    /** Lavorazioni e foto della giornata, per il riepilogo in fondo. */
+    private fun observeEntries(workDayId: Long) {
+        if (entriesFor == workDayId) return
+        entriesFor = workDayId
+        viewModelScope.launch {
+            entryRepository.observeActivities(workDayId).collect { list ->
+                _uiState.update { it.copy(activities = list) }
+            }
+        }
+        viewModelScope.launch {
+            entryRepository.observePhotos(workDayId).collect { list ->
+                _uiState.update { it.copy(photos = list) }
+            }
+        }
+    }
+
+    fun saveExtraSite(input: ExtraSiteInput) = viewModelScope.launch {
+        val dayId = _uiState.value.workDayId
+        if (dayId == 0L) return@launch
+        if (input.id == 0L) {
+            workDayRepository.addExtraSite(dayId, input.siteId, input.minutes, input.description)
+        } else {
+            workDayRepository.updateExtraSite(input.id, input.siteId, input.minutes, input.description)
+        }
+    }
+
+    fun deleteExtraSite(id: Long) = viewModelScope.launch {
+        workDayRepository.deleteExtraSite(id)
+    }
+
+    fun saveTrip(trip: Trip) = viewModelScope.launch {
+        val dayId = _uiState.value.workDayId
+        if (dayId == 0L) return@launch
+        workDayRepository.saveTrip(trip.copy(workDayId = dayId))
+    }
+
+    fun deleteTrip(id: Long) = viewModelScope.launch {
+        workDayRepository.deleteTrip(id)
     }
 
     fun onStartTime(time: LocalTime) =
@@ -189,6 +247,7 @@ class DayDetailViewModel(
             initializer {
                 DayDetailViewModel(
                     workDayRepository = diarioContainer.workDayRepository,
+                    entryRepository = diarioContainer.diaryEntryRepository,
                     siteRepository = diarioContainer.siteRepository,
                     settingsRepository = diarioContainer.settingsRepository,
                     calculator = diarioContainer.workTimeCalculator,

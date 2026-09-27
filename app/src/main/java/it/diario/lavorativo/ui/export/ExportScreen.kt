@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.export
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -248,7 +249,7 @@ fun ExportScreen(
                     }
                 },
                 enabled = !state.working,
-                modifier = Modifier.fillMaxWidth().height(64.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
             ) {
                 if (state.working) {
                     CircularProgressIndicator(
@@ -269,7 +270,7 @@ fun ExportScreen(
                                 .openIntent(file, state.lastFormat)
                         )
                     },
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                 ) {
                     Text("APRI " + file.name)
                 }

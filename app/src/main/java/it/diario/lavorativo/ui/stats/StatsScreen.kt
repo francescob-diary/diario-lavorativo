@@ -179,6 +179,23 @@ private fun StatsContent(summary: StatsSummary) {
     }
 
     val assenze = summary.totals.absenceDays
+    if (summary.tripCount > 0) {
+        Spacer(Modifier.height(20.dp))
+        SectionTitle("Spostamenti")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Spostamenti registrati: " + summary.tripCount.toString(),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        if (!summary.travelTime.isZero) {
+            Text(
+                text = "Tempo in viaggio: " +
+                    it.diario.lavorativo.core.time.DurationFormat.short(summary.travelTime),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+
     if (assenze.isNotEmpty() || summary.eventDays > 0 || summary.unresolvedEvents > 0) {
         Spacer(Modifier.height(20.dp))
         SectionTitle("Altro")

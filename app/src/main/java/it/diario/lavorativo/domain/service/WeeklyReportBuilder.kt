@@ -4,6 +4,7 @@ import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.domain.model.EventSeverity
 import it.diario.lavorativo.domain.model.WeeklyDayLine
 import it.diario.lavorativo.domain.model.WeeklyReport
+import it.diario.lavorativo.domain.model.WeeklySegment
 import it.diario.lavorativo.domain.model.WorkActivity
 import it.diario.lavorativo.domain.model.WorkDay
 import it.diario.lavorativo.domain.model.WorkEvent
@@ -66,7 +67,7 @@ class WeeklyReportBuilder(
             weekStart = monday,
             days = lines,
             totals = summarizer.totals(days, now, standardMinutes),
-            sites = days.mapNotNull { it.site?.name }.distinct(),
+            sites = days.flatMap { d -> d.allSites.map { it.name } }.distinct(),
             notableEvents = notable
         )
     }
@@ -79,6 +80,32 @@ class WeeklyReportBuilder(
         zone: ZoneId
     ): WeeklyDayLine {
         val summary = calculator.summarize(day, now, standardMinutes)
+        val lavoro = describeWork(day, activities)
+
+        // Giornata divisa su piu' cantieri: le ore del principale sono il
+        // resto della giornata togliendo quelle segnate sugli altri.
+        val segments = if (day.extraSites.isEmpty() || day.dayType != DayType.LAVORO) {
+            emptyList()
+        } else {
+            val extra = Duration.ofMinutes(day.extraSitesMinutes.toLong())
+            val principale = summary.net.minus(extra).let { if (it.isNegative) Duration.ZERO else it }
+            listOf(
+                WeeklySegment(
+                    siteLabel = SiteAddressFormatter.forReport(day.site).orEmpty(),
+                    hours = principale,
+                    work = lavoro
+                )
+            ) + day.extraSites.map { ds ->
+                WeeklySegment(
+                    siteLabel = SiteAddressFormatter.forReport(ds.site).orEmpty(),
+                    hours = ds.duration,
+                    work = ds.description?.takeIf { it.isNotBlank() }
+                        ?: ds.site.workInProgress?.takeIf { it.isNotBlank() }
+                        ?: ""
+                )
+            }
+        }
+
         return WeeklyDayLine(
             date = day.date,
             dayType = day.dayType,
@@ -89,8 +116,9 @@ class WeeklyReportBuilder(
             net = if (day.dayType == DayType.LAVORO) summary.net else Duration.ZERO,
             overtime = if (day.dayType == DayType.LAVORO) summary.overtime else Duration.ZERO,
             breaks = summary.breaks,
-            work = describeWork(day, activities),
-            incomplete = day.isRunning
+            work = lavoro,
+            incomplete = day.isRunning,
+            segments = segments
         )
     }
 

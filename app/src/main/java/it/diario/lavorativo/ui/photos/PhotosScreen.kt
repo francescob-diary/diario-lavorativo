@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.photos
 
+import androidx.compose.foundation.layout.heightIn
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +27,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,6 +65,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.diario.lavorativo.core.di.appContainer
 import it.diario.lavorativo.domain.model.Photo
+import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.ui.history.LONG_DATE
 import kotlinx.coroutines.launch
 
@@ -96,10 +101,11 @@ fun PhotosScreen(
         pendingCameraUri = null
     }
 
+    // Selettore multiplo di Android: si scelgono tante foto insieme.
     val galleryLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) viewModel.onGalleryPicked(uri)
+        ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK)
+    ) { uris ->
+        if (uris.isNotEmpty()) viewModel.onGalleryPickedMany(uris)
     }
 
     val scope = rememberCoroutineScope()
@@ -178,7 +184,7 @@ fun PhotosScreen(
                             scatta()
                         }
                     },
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) {
                     Icon(Icons.Filled.PhotoCamera, contentDescription = null)
                     Spacer(Modifier.height(0.dp))
@@ -192,7 +198,7 @@ fun PhotosScreen(
                             )
                         )
                     },
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) {
                     Icon(Icons.Filled.PhotoLibrary, contentDescription = null)
                     Text("  GALLERIA")
@@ -202,10 +208,21 @@ fun PhotosScreen(
             Spacer(Modifier.height(16.dp))
 
             when {
-                state.importing -> Box(
+                state.importing || state.importTotal > 0 -> Box(
                     modifier = Modifier.fillMaxWidth().height(120.dp),
                     contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator() }
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        if (state.importTotal > 1) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Importo " + state.importDone.toString() + " di " +
+                                    state.importTotal.toString()
+                            )
+                        }
+                    }
+                }
 
                 state.isEmpty -> Box(
                     modifier = Modifier.fillMaxSize(),
@@ -226,15 +243,46 @@ fun PhotosScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.photos, key = { it.id }) { photo ->
-                        PhotoThumbnail(
-                            photo = photo,
-                            onClick = { viewModel.openPhoto(photo) }
-                        )
-                    }
+                    // Foto raggruppate per cantiere quando la giornata ne ha piu' d'uno.
+                    val gruppi = state.photos.groupBy { it.siteId }
+                    val mostraGruppi = state.daySites.size > 1 || gruppi.keys.any { it != null }
+                    gruppi.entries
+                        .sortedBy { (siteId, _) ->
+                            state.daySites.indexOfFirst { it.id == siteId }
+                                .let { if (it < 0) Int.MAX_VALUE else it }
+                        }
+                        .forEach { (siteId, foto) ->
+                            if (mostraGruppi) {
+                                item(
+                                    key = "g" + siteId.toString(),
+                                    span = { GridItemSpan(maxLineSpan) }
+                                ) {
+                                    Text(
+                                        text = state.siteName(siteId) ?: "Senza cantiere",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                            items(foto, key = { it.id }) { photo ->
+                                PhotoThumbnail(
+                                    photo = photo,
+                                    onClick = { viewModel.openPhoto(photo) }
+                                )
+                            }
+                        }
                 }
             }
         }
+    }
+
+    if (state.awaitingSite.isNotEmpty()) {
+        SitePickForPhotosDialog(
+            count = state.awaitingSite.size,
+            sites = state.daySites,
+            onPick = viewModel::assignPendingTo
+        )
     }
 
     state.openPhoto?.let { photo ->
@@ -246,7 +294,9 @@ fun PhotosScreen(
             onLinkActivity = { viewModel.linkToActivity(photo.id, it) },
             onLinkEvent = { viewModel.linkToEvent(photo.id, it) },
             onDelete = { viewModel.deletePhoto(photo) },
-            onDismiss = viewModel::closePhoto
+            onDismiss = viewModel::closePhoto,
+            sites = state.daySites,
+            onSite = { viewModel.setPhotoSite(photo.id, it) }
         )
     }
 }
@@ -300,4 +350,38 @@ fun PhotoThumbnail(photo: Photo, onClick: () -> Unit, modifier: Modifier = Modif
             }
         }
     }
+}
+
+private const val MAX_PICK = 50
+
+/**
+ * Domanda unica dopo un gruppo di foto: a che cantiere vanno? Si
+ * propongono i cantieri della giornata.
+ */
+@Composable
+private fun SitePickForPhotosDialog(
+    count: Int,
+    sites: List<Site>,
+    onPick: (Long?) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onPick(null) },
+        title = {
+            Text(if (count == 1) "A che cantiere va la foto?" else "A che cantiere vanno le " + count.toString() + " foto?")
+        },
+        text = {
+            Column {
+                sites.forEach { site ->
+                    TextButton(
+                        onClick = { onPick(site.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(site.displayLabel) }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = { onPick(null) }) { Text("PIU' TARDI") }
+        }
+    )
 }

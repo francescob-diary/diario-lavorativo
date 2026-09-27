@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.entries
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -81,7 +82,7 @@ fun EntryEditorSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) { Text("Annulla") }
 
                 Button(
@@ -91,7 +92,7 @@ fun EntryEditorSheet(
                         is EditorState.Event -> editor.canSave
                         is EditorState.Comm -> editor.canSave
                     },
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) { Text("SALVA") }
             }
         }
@@ -459,7 +460,7 @@ private fun RequiredTimeButton(
     onPick: (LocalTime) -> Unit
 ) {
     var open by remember { mutableStateOf(false) }
-    OutlinedButton(onClick = { open = true }, modifier = modifier.height(56.dp)) {
+    OutlinedButton(onClick = { open = true }, modifier = modifier.heightIn(min = 56.dp)) {
         Text(label + " " + value.format(TIME))
     }
     if (open) {
@@ -484,7 +485,7 @@ private fun OptionalTimeButton(
     var open by remember { mutableStateOf(false) }
     OutlinedButton(
         onClick = { if (value == null) open = true else onPick(null) },
-        modifier = modifier.height(56.dp)
+        modifier = modifier.heightIn(min = 56.dp)
     ) {
         Text(if (value == null) label else value.format(TIME) + "  x")
     }

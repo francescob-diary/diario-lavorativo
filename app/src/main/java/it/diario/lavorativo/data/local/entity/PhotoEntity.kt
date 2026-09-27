@@ -42,7 +42,8 @@ import androidx.room.PrimaryKey
         Index(value = ["workDayId"]),
         Index(value = ["activityId"]),
         Index(value = ["eventId"]),
-        Index(value = ["fileName"], unique = true)
+        Index(value = ["fileName"], unique = true),
+        Index(value = ["siteId"])
     ]
 )
 data class PhotoEntity(
@@ -56,5 +57,7 @@ data class PhotoEntity(
     val takenAt: Long,
     val source: String = "FOTOCAMERA",
     val sizeBytes: Long = 0L,
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+    /** Cantiere a cui appartiene la foto (versione 8). Null = non assegnata. */
+    val siteId: Long? = null
 )

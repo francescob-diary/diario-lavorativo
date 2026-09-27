@@ -1,5 +1,8 @@
 package it.diario.lavorativo.ui.today
 
+import it.diario.lavorativo.ui.day.ExtraSitesSection
+import it.diario.lavorativo.ui.day.TripsSection
+import androidx.compose.foundation.layout.heightIn
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -163,10 +166,32 @@ fun TodayScreen(
                 onToggleBreak = { viewModel.toggleBreak() }
             )
 
+            state.day?.takeIf { it.isStarted }?.let { day ->
+                Spacer(Modifier.height(20.dp))
+                ExtraSitesSection(
+                    mainSite = day.site,
+                    mainHours = state.summary.net
+                        .minusMinutes(day.extraSitesMinutes.toLong())
+                        .let { if (it.isNegative) java.time.Duration.ZERO else it },
+                    extraSites = day.extraSites,
+                    availableSites = state.activeSites,
+                    onSave = viewModel::saveExtraSite,
+                    onDelete = viewModel::deleteExtraSite
+                )
+                Spacer(Modifier.height(16.dp))
+                TripsSection(
+                    trips = day.trips,
+                    date = day.date,
+                    zone = state.zone,
+                    onSave = viewModel::saveTrip,
+                    onDelete = viewModel::deleteTrip
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
             OutlinedButton(
                 onClick = { onOpenEntries(state.date) },
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             ) {
                 Text("LAVORI, EVENTI E CONTATTI")
             }
@@ -175,13 +200,13 @@ fun TodayScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = { onOpenPhotos(state.date) },
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) {
                     Text("FOTO")
                 }
                 OutlinedButton(
                     onClick = { onOpenVoiceNotes(state.date) },
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                 ) {
                     Text("NOTE VOCALI")
                 }
@@ -433,9 +458,16 @@ private fun MainActions(
                 // standard gia' compilato, pausa pranzo compresa.
                 OutlinedButton(
                     onClick = onStandardDay,
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                 ) {
-                    Text("GIORNATA STANDARD 08:00-17:00, PAUSA 12-13")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("GIORNATA STANDARD", textAlign = TextAlign.Center)
+                        Text(
+                            "08:00-17:00, pausa 12-13",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 

@@ -12,6 +12,10 @@ import it.diario.lavorativo.data.local.entity.FuelStopEntity
 import it.diario.lavorativo.data.local.entity.VehicleExpenseEntity
 import it.diario.lavorativo.data.local.entity.MaintenanceEntity
 import it.diario.lavorativo.data.local.entity.WorkDayEntity
+import it.diario.lavorativo.data.local.entity.DaySiteEntity
+import it.diario.lavorativo.data.local.entity.TripEntity
+import it.diario.lavorativo.domain.backup.BackupDaySite
+import it.diario.lavorativo.domain.backup.BackupTrip
 import it.diario.lavorativo.domain.backup.BackupActivity
 import it.diario.lavorativo.domain.backup.BackupBreak
 import it.diario.lavorativo.domain.backup.BackupCommunication
@@ -110,14 +114,15 @@ fun BackupCommunication.toEntity() = CommunicationEntity(
 
 fun PhotoEntity.toBackup() = BackupPhoto(
     id, workDayId, activityId, eventId, fileName, galleryUri, caption,
-    takenAt, source, sizeBytes, createdAt
+    takenAt, source, sizeBytes, createdAt,
+    siteId = siteId
 )
 
 fun BackupPhoto.toEntity() = PhotoEntity(
     id = id, workDayId = workDayId, activityId = activityId,
     eventId = eventId, fileName = fileName, galleryUri = galleryUri,
     caption = caption, takenAt = takenAt, source = source,
-    sizeBytes = sizeBytes, createdAt = createdAt
+    sizeBytes = sizeBytes, createdAt = createdAt, siteId = siteId
 )
 
 fun VoiceNoteEntity.toBackup() = BackupVoiceNote(
@@ -181,4 +186,24 @@ fun BackupMaintenance.toEntity() = MaintenanceEntity(
     description = description, odometerKm = odometerKm, amountCents = amountCents,
     workshop = workshop, nextDueDate = nextDueDate, nextDueKm = nextDueKm,
     notes = notes, createdAt = createdAt
+)
+
+fun DaySiteEntity.toBackup() = BackupDaySite(
+    id = id, workDayId = workDayId, siteId = siteId, minutes = minutes,
+    description = description, sortOrder = sortOrder, createdAt = createdAt
+)
+
+fun BackupDaySite.toEntity() = DaySiteEntity(
+    id = id, workDayId = workDayId, siteId = siteId, minutes = minutes,
+    description = description, sortOrder = sortOrder, createdAt = createdAt
+)
+
+fun TripEntity.toBackup() = BackupTrip(
+    id = id, workDayId = workDayId, departTime = departTime, arriveTime = arriveTime,
+    fromPlace = fromPlace, toPlace = toPlace, notes = notes, createdAt = createdAt
+)
+
+fun BackupTrip.toEntity() = TripEntity(
+    id = id, workDayId = workDayId, departTime = departTime, arriveTime = arriveTime,
+    fromPlace = fromPlace, toPlace = toPlace, notes = notes, createdAt = createdAt
 )

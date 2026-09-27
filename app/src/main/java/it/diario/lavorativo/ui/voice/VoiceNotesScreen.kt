@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.voice
 
+import androidx.compose.foundation.layout.heightIn
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -307,14 +308,14 @@ private fun RecordingBar(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = onCancel,
-                        modifier = Modifier.weight(1f).height(64.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 64.dp)
                     ) {
                         Text("BUTTA VIA")
                     }
                     Spacer(Modifier.size(12.dp))
                     Button(
                         onClick = onStop,
-                        modifier = Modifier.weight(1f).height(64.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 64.dp)
                     ) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(Modifier.size(8.dp))

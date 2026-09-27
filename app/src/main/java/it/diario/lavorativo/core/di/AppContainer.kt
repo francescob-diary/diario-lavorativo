@@ -114,6 +114,8 @@ class AppContainer(val context: Context) {
     val workDayRepository: WorkDayRepository = WorkDayRepositoryImpl(
         workDayDao = database.workDayDao(),
         breakDao = database.breakDao(),
+        daySiteDao = database.daySiteDao(),
+        tripDao = database.tripDao(),
         clock = clock
     )
 

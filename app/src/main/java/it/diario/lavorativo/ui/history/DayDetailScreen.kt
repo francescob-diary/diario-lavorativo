@@ -1,5 +1,11 @@
 package it.diario.lavorativo.ui.history
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import it.diario.lavorativo.ui.photos.PhotoThumbnail
+import it.diario.lavorativo.ui.day.TripsSection
+import it.diario.lavorativo.ui.day.ExtraSitesSection
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -144,7 +150,7 @@ fun DayDetailScreen(
 
                 OutlinedButton(
                     onClick = onOpenEntries,
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                 ) {
                     Text("LAVORI, EVENTI E CONTATTI")
                 }
@@ -154,13 +160,13 @@ fun DayDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(
                         onClick = onOpenPhotos,
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                     ) {
                         Text("FOTO")
                     }
                     OutlinedButton(
                         onClick = onOpenVoiceNotes,
-                        modifier = Modifier.weight(1f).height(56.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 56.dp)
                     ) {
                         Text("NOTE VOCALI")
                     }
@@ -216,6 +222,27 @@ fun DayDetailScreen(
                     onSelect = viewModel::onSite
                 )
 
+                Spacer(Modifier.height(12.dp))
+
+                ExtraSitesSection(
+                    mainSite = state.site,
+                    mainHours = state.mainSiteHours,
+                    extraSites = state.extraSites,
+                    availableSites = state.availableSites,
+                    onSave = viewModel::saveExtraSite,
+                    onDelete = viewModel::deleteExtraSite
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                TripsSection(
+                    trips = state.trips,
+                    date = state.date,
+                    zone = state.zone,
+                    onSave = viewModel::saveTrip,
+                    onDelete = viewModel::deleteTrip
+                )
+
                 Spacer(Modifier.height(16.dp))
 
                 if (state.breaks.isNotEmpty()) {
@@ -262,12 +289,46 @@ fun DayDetailScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (state.activities.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text("Lavorazioni", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    state.activities.forEach { a ->
+                        Text(
+                            text = "- " + a.description +
+                                (a.quantity?.takeIf { it.isNotBlank() }?.let { " (" + it + ")" } ?: ""),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                if (state.photos.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Foto (" + state.photos.size.toString() + ")",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        state.photos.take(12).forEach { foto ->
+                            PhotoThumbnail(
+                                photo = foto,
+                                onClick = onOpenPhotos,
+                                modifier = Modifier.width(96.dp)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(24.dp))
 
                 Button(
                     onClick = viewModel::save,
                     enabled = state.canSave,
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                 ) {
                     Text(if (state.dirty) "SALVA MODIFICHE" else "NESSUNA MODIFICA")
                 }
@@ -460,7 +521,7 @@ private fun MissingDay(
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onCreateWork,
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
             Text("REGISTRA GIORNATA DI LAVORO")
         }

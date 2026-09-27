@@ -2,6 +2,11 @@ package it.diario.lavorativo.data.repository
 
 import it.diario.lavorativo.core.time.AppClock
 import it.diario.lavorativo.data.local.dao.BreakDao
+import it.diario.lavorativo.data.local.dao.DaySiteDao
+import it.diario.lavorativo.data.local.dao.TripDao
+import it.diario.lavorativo.data.local.entity.DaySiteEntity
+import it.diario.lavorativo.data.mapper.toEntity
+import it.diario.lavorativo.domain.model.Trip
 import it.diario.lavorativo.data.local.dao.WorkDayDao
 import it.diario.lavorativo.data.local.entity.BreakEntity
 import it.diario.lavorativo.data.local.entity.WorkDayEntity
@@ -24,6 +29,8 @@ import java.time.LocalDate
 class WorkDayRepositoryImpl(
     private val workDayDao: WorkDayDao,
     private val breakDao: BreakDao,
+    private val daySiteDao: DaySiteDao,
+    private val tripDao: TripDao,
     private val clock: AppClock
 ) : WorkDayRepository {
 
@@ -177,4 +184,68 @@ class WorkDayRepositoryImpl(
     }
 
     override suspend fun deleteBreak(breakId: Long) = breakDao.delete(breakId)
+
+    override suspend fun addBreak(workDayId: Long, start: Instant, end: Instant, type: BreakType): Long =
+        breakDao.insert(
+            BreakEntity(
+                workDayId = workDayId,
+                startTime = start.toEpochMilli(),
+                endTime = maxOf(start.toEpochMilli(), end.toEpochMilli()),
+                type = type.name
+            )
+        )
+
+    override suspend fun getDay(date: LocalDate): WorkDay? {
+        val entity = workDayDao.getByDate(date.toEpochDayLong()) ?: return null
+        return workDayDao.getById(entity.id)?.toDomain()
+    }
+
+    override suspend fun updatePlace(workDayId: Long, place: String?) {
+        val details = workDayDao.getById(workDayId) ?: return
+        workDayDao.update(
+            details.workDay.copy(
+                place = place?.trim()?.ifBlank { null },
+                updatedAt = clock.now().toEpochMilli()
+            )
+        )
+    }
+
+    override suspend fun addExtraSite(workDayId: Long, siteId: Long, minutes: Int, description: String?): Long {
+        val ordine = daySiteDao.forDay(workDayId).size
+        return daySiteDao.insert(
+            DaySiteEntity(
+                workDayId = workDayId,
+                siteId = siteId,
+                minutes = minutes.coerceIn(0, 24 * 60),
+                description = description?.trim()?.ifBlank { null },
+                sortOrder = ordine,
+                createdAt = clock.now().toEpochMilli()
+            )
+        )
+    }
+
+    override suspend fun updateExtraSite(id: Long, siteId: Long, minutes: Int, description: String?) {
+        val entity = daySiteDao.getById(id) ?: return
+        daySiteDao.update(
+            entity.copy(
+                siteId = siteId,
+                minutes = minutes.coerceIn(0, 24 * 60),
+                description = description?.trim()?.ifBlank { null }
+            )
+        )
+    }
+
+    override suspend fun deleteExtraSite(id: Long) = daySiteDao.delete(id)
+
+    override suspend fun saveTrip(trip: Trip): Long {
+        return if (trip.id == 0L) {
+            tripDao.insert(trip.toEntity(createdAt = clock.now().toEpochMilli()))
+        } else {
+            val esistente = tripDao.getById(trip.id)
+            tripDao.update(trip.toEntity(createdAt = esistente?.createdAt ?: clock.now().toEpochMilli()))
+            trip.id
+        }
+    }
+
+    override suspend fun deleteTrip(id: Long) = tripDao.delete(id)
 }

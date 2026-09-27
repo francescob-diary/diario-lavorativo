@@ -3,6 +3,7 @@ package it.diario.lavorativo.domain.repository
 import it.diario.lavorativo.domain.model.BreakType
 import it.diario.lavorativo.domain.model.DayType
 import it.diario.lavorativo.domain.model.WorkDay
+import it.diario.lavorativo.domain.model.Trip
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
@@ -64,4 +65,27 @@ interface WorkDayRepository {
     suspend fun endBreak(breakId: Long, at: Instant)
 
     suspend fun deleteBreak(breakId: Long)
+
+    /** Pausa gia' completa, con inizio e fine (es. pranzo 12-13). */
+    suspend fun addBreak(workDayId: Long, start: Instant, end: Instant, type: BreakType): Long
+
+    /** Giornata di una data, letta una volta sola. */
+    suspend fun getDay(date: LocalDate): WorkDay?
+
+    suspend fun updatePlace(workDayId: Long, place: String?)
+
+    // ---- piu' cantieri nella stessa giornata ----
+
+    suspend fun addExtraSite(workDayId: Long, siteId: Long, minutes: Int, description: String? = null): Long
+
+    suspend fun updateExtraSite(id: Long, siteId: Long, minutes: Int, description: String? = null)
+
+    suspend fun deleteExtraSite(id: Long)
+
+    // ---- spostamenti ----
+
+    /** Inserisce (id 0) o aggiorna uno spostamento. Restituisce l'id. */
+    suspend fun saveTrip(trip: Trip): Long
+
+    suspend fun deleteTrip(id: Long)
 }

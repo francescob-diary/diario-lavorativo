@@ -108,6 +108,10 @@ class DiaryEntryRepositoryImpl(
     override suspend fun setPhotoLinks(id: Long, activityId: Long?, eventId: Long?) =
         photoDao.setLinks(id, activityId, eventId)
 
+    override suspend fun setPhotosSite(ids: List<Long>, siteId: Long?) {
+        if (ids.isNotEmpty()) photoDao.setSite(ids, siteId)
+    }
+
     override suspend fun knownPhotoFiles(): Set<String> = photoDao.allFileNames().toSet()
 
     override suspend fun totalPhotoBytes(): Long = photoDao.totalBytes()
