@@ -7,9 +7,8 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-# Serve per poter riscrivere nel repository il referto degli errori.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   apk:
@@ -26,47 +25,29 @@ jobs:
           java-version: '17'
 
       # Il progetto non ha il wrapper di Gradle: lo installa l'azione,
-      # bloccato a una versione precisa. Meglio una versione scritta che
-      # "l'ultima disponibile", che un giorno cambia e rompe la build
-      # senza che nessuno abbia toccato niente.
+      # bloccato a una versione precisa.
       - name: Prepara Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Compila l'APK di prova
+      # Gli errori del compilatore diventano "annotazioni" della build:
+      # si leggono dalla pagina della build e dalle API di GitHub, senza
+      # dover scaricare il registro completo.
+      - name: Compila l'APK
         run: |
           set -o pipefail
-          gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log
-
-      # Se la compilazione cade, il motivo finisce in un file dentro il
-      # repository invece che solo nel registro di GitHub. Il registro si
-      # scarica da un indirizzo esterno che non tutti riescono a
-      # raggiungere; un file nel repository lo legge chiunque.
-      - name: Scrivi il referto se qualcosa e' andato storto
-        if: failure()
-        run: |
-          {
-            echo "Compilazione fallita il $(date -u +'%d/%m/%Y alle %H:%M UTC')"
+          if ! gradle assembleDebug --stacktrace 2>&1 | tee /tmp/build.log; then
+            grep -E "^e: " /tmp/build.log | head -40 | while IFS= read -r riga; do
+              echo "::error title=Compilazione::${riga}"
+            done
+            grep -A 8 "What went wrong" /tmp/build.log | head -20 | tr '\n' ' ' | sed 's/^/::error title=Gradle::/'
             echo
-            echo "=== ERRORI DEL COMPILATORE ==="
-            grep -E "^e: |error:" /tmp/build.log | head -60 || echo "(nessuno)"
-            echo
-            echo "=== COSA DICE GRADLE ==="
-            grep -A 12 "What went wrong" /tmp/build.log | head -40 || echo "(niente)"
-            echo
-            echo "=== ULTIME RIGHE ==="
-            tail -40 /tmp/build.log
-          } > ERRORI-BUILD.txt
-          git config user.name "Compilazione"
-          git config user.email "actions@github.com"
-          git add ERRORI-BUILD.txt
-          git commit -m "Referto della compilazione fallita"
-          git push
+            exit 1
+          fi
 
       # L'APK si carica subito, prima dei test: se un test dovesse
-      # fallire, l'APK e' comunque gia' scaricabile e si puo' provare
-      # sul telefono mentre si guarda cosa non va.
+      # fallire, l'APK e' comunque gia' scaricabile.
       - name: Metti l'APK fra i risultati
         uses: actions/upload-artifact@v4
         with:
@@ -75,7 +56,27 @@ jobs:
           if-no-files-found: error
 
       - name: Esegui i test
-        run: gradle testDebugUnitTest --stacktrace
+        run: |
+          set -o pipefail
+          if ! gradle testDebugUnitTest --stacktrace 2>&1 | tee /tmp/test.log; then
+            python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          n = 0
+          for f in glob.glob('app/build/test-results/testDebugUnitTest/*.xml'):
+              for tc in ET.parse(f).getroot().iter('testcase'):
+                  for fail in list(tc.findall('failure')) + list(tc.findall('error')):
+                      msg = (fail.get('message') or fail.text or '').strip().splitlines()
+                      msg = msg[0] if msg else ''
+                      print(f"::error title=Test {tc.get('classname','').split('.')[-1]}::{tc.get('name')}: {msg[:400]}")
+                      n += 1
+          if n == 0:
+              print("::error title=Test::nessun dettaglio nei risultati, vedi il registro")
+          PY
+            grep -E "^e: " /tmp/test.log | head -20 | while IFS= read -r riga; do
+              echo "::error title=Compilazione test::${riga}"
+            done
+            exit 1
+          fi
 
       - name: Metti i referti dei test fra i risultati
         if: always()

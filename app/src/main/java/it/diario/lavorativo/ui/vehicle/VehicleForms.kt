@@ -88,6 +88,12 @@ fun VehicleDialog(
     var targa by remember { mutableStateOf(existing?.plate.orEmpty()) }
     var attivo by remember { mutableStateOf(existing?.active ?: true) }
 
+    // Basta uno dei due campi: se il modello e' vuoto, il mezzo prende il
+    // nome dalla targa. Prima serviva per forza il modello, ma il campo
+    // mostrava un esempio in grigio che sembrava gia' scritto, e il SALVA
+    // restava spento senza spiegare perche'.
+    val nomeFinale = nome.trim().ifBlank { targa.trim() }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Nuovo mezzo" else "Modifica mezzo") },
@@ -97,7 +103,7 @@ fun VehicleDialog(
                     value = nome,
                     onValueChange = { nome = it },
                     label = { Text("Modello") },
-                    placeholder = { Text("Fiat Doblo") },
+                    supportingText = { Text("Ad esempio: Fiat Doblo") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -126,8 +132,8 @@ fun VehicleDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(nome, targa.takeIf { it.isNotBlank() }, attivo) },
-                enabled = nome.isNotBlank()
+                onClick = { onSave(nomeFinale, targa.takeIf { it.isNotBlank() }, attivo) },
+                enabled = nomeFinale.isNotBlank()
             ) { Text("SALVA") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("ANNULLA") } }

@@ -19,9 +19,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Firma sempre uguale. Senza, ogni compilazione su GitHub usava una
+    // chiave nuova e il telefono rifiutava l'aggiornamento sopra la versione
+    // gia' installata: bisognava disinstallare e si perdevano i dati.
+    signingConfigs {
+        create("fissa") {
+            storeFile = file("firma/diario.jks")
+            storePassword = "diariolavorativo"
+            keyAlias = "diario"
+            keyPassword = "diariolavorativo"
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("fissa")
         }
         release {
             isMinifyEnabled = false
