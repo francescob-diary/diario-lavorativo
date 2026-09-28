@@ -107,7 +107,49 @@ fun DictationScreen(
         ActivityResultContracts.RequestPermission()
     ) { ok ->
         permesso = ok
-        if (ok) racconto.start(state.transcript)
+        if (ok) {
+            racconto.start(state.transcript)
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                "Senza il permesso del microfono non posso ascoltarti. " +
+                    "Puoi darlo da Impostazioni > App > Diario Lavorativo > Autorizzazioni.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Riserva: la finestrella di dettatura di Google, che ha i suoi permessi.
+    // Ogni volta si dice una frase; il testo si aggiunge in fondo.
+    var dettaturaPerRisposta by remember { mutableStateOf(false) }
+    val microfonoGoogle = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val detto = result.data
+            ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+            ?.trim()
+            .orEmpty()
+        if (detto.isNotEmpty()) {
+            if (dettaturaPerRisposta) {
+                risposta.append(detto)
+            } else {
+                racconto.append(detto)
+                viewModel.setTranscript(racconto.state.value.text)
+            }
+        }
+    }
+    fun apriMicrofonoGoogle(perRisposta: Boolean) {
+        dettaturaPerRisposta = perRisposta
+        try {
+            microfonoGoogle.launch(it.diario.lavorativo.ui.components.dictationIntent("Racconta"))
+        } catch (e: android.content.ActivityNotFoundException) {
+            android.widget.Toast.makeText(
+                context,
+                "Su questo telefono manca il riconoscimento vocale di Google",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     // Il testo riconosciuto finisce nel racconto, man mano.
@@ -116,9 +158,7 @@ fun DictationScreen(
             viewModel.setTranscript(ascolto.text)
         }
     }
-    LaunchedEffect(ascolto.error) {
-        ascolto.error?.let { snackbar.showSnackbar(it) }
-    }
+
     LaunchedEffect(state.message) {
         state.message?.let {
             snackbar.showSnackbar(it)
@@ -169,6 +209,11 @@ fun DictationScreen(
         ) {
             when (state.stage) {
                 DictationStage.RACCONTO -> StoryStep(
+                    error = ascolto.error,
+                    onGoogleMic = {
+                        racconto.clearError()
+                        apriMicrofonoGoogle(perRisposta = false)
+                    },
                     transcript = state.transcript,
                     partial = ascolto.partial,
                     listening = ascolto.listening,
@@ -206,8 +251,17 @@ fun DictationScreen(
                         if (ascoltoRisposta.partial.isBlank()) "" else " " + ascoltoRisposta.partial
                         ),
                     listening = ascoltoRisposta.listening,
+                    error = ascoltoRisposta.error,
+                    onGoogleMic = {
+                        risposta.clearError()
+                        apriMicrofonoGoogle(perRisposta = true)
+                    },
                     onMic = {
-                        if (ascoltoRisposta.listening) risposta.stop() else risposta.start()
+                        when {
+                            ascoltoRisposta.listening -> risposta.stop()
+                            permesso -> risposta.start()
+                            else -> chiediPermesso.launch(Manifest.permission.RECORD_AUDIO)
+                        }
                     },
                     onEdit = { risposta.setText(it) },
                     onAnswer = {
@@ -240,6 +294,8 @@ fun DictationScreen(
 
 @Composable
 private fun StoryStep(
+    error: String?,
+    onGoogleMic: () -> Unit,
     transcript: String,
     partial: String,
     listening: Boolean,
@@ -282,6 +338,11 @@ private fun StoryStep(
         modifier = Modifier.fillMaxWidth(),
         color = if (listening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     )
+
+    if (error != null) {
+        Spacer(Modifier.height(12.dp))
+        MicProblemCard(error, onGoogleMic)
+    }
 
     Spacer(Modifier.height(16.dp))
     OutlinedTextField(
@@ -365,6 +426,8 @@ private fun QuestionStep(
     question: String,
     answer: String,
     listening: Boolean,
+    error: String?,
+    onGoogleMic: () -> Unit,
     onMic: () -> Unit,
     onEdit: (String) -> Unit,
     onAnswer: () -> Unit,
@@ -393,6 +456,10 @@ private fun QuestionStep(
         }
         Spacer(Modifier.size(12.dp))
         Text(if (listening) "Ti ascolto..." else "Tocca e rispondi")
+    }
+    if (error != null) {
+        Spacer(Modifier.height(8.dp))
+        MicProblemCard(error, onGoogleMic)
     }
     Spacer(Modifier.height(12.dp))
     OutlinedTextField(
@@ -639,6 +706,30 @@ private fun SavedStep(onClose: () -> Unit) {
 }
 
 // ------------------------------------------------------------ pezzetti
+
+/** Il microfono continuo non va: si spiega perche' e si offre la riserva. */
+@Composable
+private fun MicProblemCard(message: String, onGoogleMic: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(message, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = onGoogleMic, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Icon(Icons.Filled.Mic, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("USA IL MICROFONO DI GOOGLE")
+            }
+            Text(
+                "Si apre la finestrella di Google: di' una parte del racconto, " +
+                    "poi ripremi per continuare. Il testo si aggiunge in fondo.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
 
 @Composable
 private fun Section(title: String) {

@@ -42,6 +42,7 @@ class ContinuousRecognizer(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
     private var wanted = false
+    private var errorsInARow = 0
 
     fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
@@ -74,6 +75,11 @@ class ContinuousRecognizer(private val context: Context) {
     }
 
     fun setText(text: String) = _state.update { it.copy(text = text) }
+
+    /** Aggiunge in fondo del testo arrivato da un'altra strada (il microfono di Google). */
+    fun append(text: String) = _state.update { it.copy(text = join(it.text, text), error = null) }
+
+    fun clearError() = _state.update { it.copy(error = null) }
 
     fun release() {
         wanted = false
@@ -117,6 +123,7 @@ class ContinuousRecognizer(private val context: Context) {
 
     private val listener = object : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
+            errorsInARow = 0
             _state.update { it.copy(listening = true, error = null) }
         }
 
@@ -153,8 +160,12 @@ class ContinuousRecognizer(private val context: Context) {
                     restartLater(600)
                 }
 
+                // Di solito non manca al Diario ma al servizio vocale di
+                // Google, che e' quello che ascolta davvero.
                 SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> fail(
-                    "Serve il permesso del microfono."
+                    "Il riconoscimento vocale non ha il permesso del microfono. " +
+                        "Dai il permesso Microfono all'app Google (Impostazioni > App > " +
+                        "Google > Autorizzazioni), oppure usa il microfono di Google qui sotto."
                 )
 
                 SpeechRecognizer.ERROR_NETWORK,
@@ -164,7 +175,16 @@ class ContinuousRecognizer(private val context: Context) {
                         "per l'uso offline dalle impostazioni della tastiera o di Google."
                 )
 
-                else -> restartLater(400)
+                else -> {
+                    // Errori strani ripetuti: meglio fermarsi e proporre
+                    // la riserva che girare a vuoto.
+                    errorsInARow++
+                    if (errorsInARow >= 5) {
+                        fail("L'ascolto continuo non funziona su questo telefono: usa il microfono di Google qui sotto.")
+                    } else {
+                        restartLater(400)
+                    }
+                }
             }
         }
     }
