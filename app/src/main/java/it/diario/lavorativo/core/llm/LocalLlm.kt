@@ -32,8 +32,14 @@ data class LlmProgress(
         }
 }
 
+/** Quanto e' durata ogni fase, in secondi: serve a capire dove si perde tempo. */
+data class LlmTimings(val load: Int = 0, val read: Int = 0, val write: Int = 0) {
+    val total: Int get() = load + read + write
+    val label: String get() = "caricamento ${load}s, lettura ${read}s, scrittura ${write}s"
+}
+
 sealed interface LlmResult {
-    data class Ok(val text: String) : LlmResult
+    data class Ok(val text: String, val timings: LlmTimings = LlmTimings()) : LlmResult
     data class Failure(val reason: String) : LlmResult
 }
 
@@ -59,7 +65,7 @@ class LocalLlm(private val context: Context) {
     suspend fun generate(
         modelUri: Uri,
         prompt: String,
-        maxTokens: Int = 400,
+        maxTokens: Int = 320,
         onProgress: (LlmProgress) -> Unit = {}
     ): LlmResult = withContext(Dispatchers.Default) {
         LlamaBridge.ensureLibrary()?.let {
@@ -77,16 +83,21 @@ class LocalLlm(private val context: Context) {
 
         try {
             val path = "/proc/self/fd/" + pfd.fd.toString()
-            val threads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
-            val h = LlamaBridge.nativeLoad(path, CONTEXT_SIZE, threads)
+            val veloci = CpuInfo.performanceCores()
+            val t0 = System.currentTimeMillis()
+            val h = LlamaBridge.nativeLoad(path, CONTEXT_SIZE, veloci)
             if (h == 0L) {
                 return@withContext LlmResult.Failure(
                     "Il file scelto non sembra un modello valido (serve un file .gguf)."
                 )
             }
             handle = h
+            LlamaBridge.nativeSetThreads(h, veloci, veloci)
+            val t1 = System.currentTimeMillis()
+            var t2 = 0L
             try {
                 val bytes = LlamaBridge.nativeGenerate(h, prompt, maxTokens) { phase, done, total ->
+                    if (phase == 1 && t2 == 0L) t2 = System.currentTimeMillis()
                     onProgress(
                         LlmProgress(
                             phase = if (phase == 0) LlmProgress.Phase.LETTURA else LlmProgress.Phase.SCRITTURA,
@@ -101,7 +112,18 @@ class LocalLlm(private val context: Context) {
                         "Il racconto e' troppo lungo per il modello. Prova a dividerlo."
                     )
                     text.startsWith("\u0001") -> LlmResult.Failure("Il modello si e' fermato per un errore.")
-                    else -> LlmResult.Ok(text)
+                    else -> {
+                        val t3 = System.currentTimeMillis()
+                        val lettura = if (t2 == 0L) t3 else t2
+                        LlmResult.Ok(
+                            text,
+                            LlmTimings(
+                                load = ((t1 - t0) / 1000).toInt(),
+                                read = ((lettura - t1) / 1000).toInt(),
+                                write = ((t3 - lettura) / 1000).toInt()
+                            )
+                        )
+                    }
                 }
             } finally {
                 synchronized(lock) {

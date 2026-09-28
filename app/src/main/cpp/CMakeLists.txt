@@ -28,6 +28,14 @@ set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
+# Istruzioni veloci dei processori dei telefoni (prodotto scalare su 8 bit
+# e mezza precisione): senza, il modello va da due a quattro volte piu'
+# lento. Le hanno quasi tutti i telefoni dal 2019 in poi; l'app controlla
+# prima di caricare la libreria, e se mancano usa le regole semplici.
+if (ANDROID AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
+endif()
+
 FetchContent_Declare(
     llama
     GIT_REPOSITORY https://github.com/ggml-org/llama.cpp

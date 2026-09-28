@@ -92,7 +92,8 @@ Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeLoad(
 
     llama_context_params cp = llama_context_default_params();
     cp.n_ctx = (uint32_t) n_ctx;
-    cp.n_batch = 256;
+    cp.n_batch = 512;
+    cp.n_ubatch = 512;
     cp.n_threads = n_threads;
     cp.n_threads_batch = n_threads;
     llama_context * ctx = llama_init_from_model(model, cp);
@@ -106,6 +107,13 @@ Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeLoad(
     engine->ctx = ctx;
     engine->vocab = llama_model_get_vocab(model);
     return reinterpret_cast<jlong>(engine);
+}
+
+JNIEXPORT void JNICALL
+Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeSetThreads(
+        JNIEnv *, jobject, jlong handle, jint gen_threads, jint batch_threads) {
+    auto * engine = reinterpret_cast<Engine *>(handle);
+    if (engine != nullptr) llama_set_n_threads(engine->ctx, gen_threads, batch_threads);
 }
 
 JNIEXPORT jbyteArray JNICALL

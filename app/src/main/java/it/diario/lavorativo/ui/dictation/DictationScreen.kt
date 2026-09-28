@@ -279,6 +279,7 @@ fun DictationScreen(
                     form = state.form,
                     sites = state.sites,
                     usedModel = state.usedModel,
+                    timings = state.timings,
                     onChange = viewModel::updateForm,
                     onRedo = viewModel::backToStory,
                     onSave = viewModel::save
@@ -490,6 +491,7 @@ private fun ConfirmStep(
     form: DictationForm,
     sites: List<Site>,
     usedModel: Boolean,
+    timings: String?,
     onChange: ((DictationForm) -> DictationForm) -> Unit,
     onRedo: () -> Unit,
     onSave: () -> Unit
@@ -501,6 +503,9 @@ private fun ConfirmStep(
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
+    if (usedModel && timings != null) {
+        Text(timings, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+    }
     Spacer(Modifier.height(12.dp))
 
     Section("Tipo di giornata")

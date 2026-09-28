@@ -98,6 +98,8 @@ data class DictationUiState(
     val transcript: String = "",
     val progress: LlmProgress? = null,
     val usedModel: Boolean = false,
+    /** Tempi dell'ultima elaborazione col modello, da mostrare sotto. */
+    val timings: String? = null,
     val hasModel: Boolean = false,
     val form: DictationForm = DictationForm(),
     val questions: List<String> = emptyList(),
@@ -175,6 +177,9 @@ class DictationViewModel(
                 _uiState.update { it.copy(progress = p) }
             }) {
                 is LlmResult.Ok -> {
+                    _uiState.update {
+                        it.copy(timings = "Tempo " + r.timings.total.toString() + "s (" + r.timings.label + ")")
+                    }
                     val letto = DictationResponseParser.parse(r.text, sites)
                     if (letto != null) {
                         usato = true
