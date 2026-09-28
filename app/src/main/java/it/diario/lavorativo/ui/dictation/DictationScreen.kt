@@ -342,6 +342,11 @@ private fun StoryStep(
     if (error != null) {
         Spacer(Modifier.height(12.dp))
         MicProblemCard(error, onGoogleMic)
+    } else {
+        // Sempre a portata: se l'ascolto continuo fa i capricci si usa questo.
+        TextButton(onClick = onGoogleMic, modifier = Modifier.fillMaxWidth()) {
+            Text("Non va? Usa il microfono di Google")
+        }
     }
 
     Spacer(Modifier.height(16.dp))

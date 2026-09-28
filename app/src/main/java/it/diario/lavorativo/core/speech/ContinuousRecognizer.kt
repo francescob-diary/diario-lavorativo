@@ -43,11 +43,18 @@ class ContinuousRecognizer(private val context: Context) {
     private var recognizer: SpeechRecognizer? = null
     private var wanted = false
     private var errorsInARow = 0
+    private var emptyInARow = 0
+    private var heardSomething = false
+    private var preferOffline = true
 
     fun isAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
     /** Riparte da [initialText]: serve quando si aggiunge a un racconto gia' fatto. */
     fun start(initialText: String = _state.value.text) {
+        emptyInARow = 0
+        errorsInARow = 0
+        heardSomething = false
+        preferOffline = true
         if (!isAvailable()) {
             _state.update {
                 it.copy(error = "Su questo telefono il riconoscimento vocale non e' disponibile.")
@@ -94,21 +101,54 @@ class ContinuousRecognizer(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            // Lasciar respirare chi parla: molti telefoni ignorano questi
-            // valori, ma dove funzionano evitano tagli a meta' frase.
+            // Prima si prova senza internet; se il telefono non ha
+            // l'italiano offline, si passa da solo a quello con internet.
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, preferOffline)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 15000L)
         }
         runCatching { recognizer?.startListening(intent) }
-            .onFailure { restartLater(500) }
+            .onFailure { restartLater(600, fresh = true) }
     }
 
-    private fun restartLater(delayMs: Long) {
+    private fun restartLater(delayMs: Long, fresh: Boolean = false) {
         if (!wanted) return
         handler.removeCallbacksAndMessages(null)
-        handler.postDelayed({ listen() }, delayMs)
+        handler.postDelayed({
+            // Su tanti telefoni il riconoscitore riusato si incastra:
+            // meglio buttarlo e crearne uno nuovo.
+            if (fresh) {
+                runCatching { recognizer?.destroy() }
+                recognizer = SpeechRecognizer.createSpeechRecognizer(context).also {
+                    it.setRecognitionListener(listener)
+                }
+            }
+            listen()
+        }, delayMs)
+    }
+
+    /**
+     * Un giro finito senza aver capito niente. Dopo due giri a vuoto senza
+     * internet si prova con internet; dopo altri giri a vuoto ci si ferma
+     * e si propone il microfono di Google, invece di continuare a suonare.
+     */
+    private fun emptyRound() {
+        emptyInARow++
+        when {
+            preferOffline && !heardSomething && emptyInARow >= 2 -> {
+                preferOffline = false
+                emptyInARow = 0
+                restartLater(400, fresh = true)
+            }
+            emptyInARow >= MAX_EMPTY -> fail(
+                if (heardSomething) {
+                    "Mi sono fermato perche' non sentivo piu' niente. Ripremi il microfono per continuare."
+                } else {
+                    "Non riesco a sentirti con l'ascolto continuo. Usa il microfono di Google qui sotto."
+                }
+            )
+            else -> restartLater(300, fresh = true)
+        }
     }
 
     private fun join(a: String, b: String): String {
@@ -138,6 +178,10 @@ class ContinuousRecognizer(private val context: Context) {
                 ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 ?.firstOrNull()
                 .orEmpty()
+            if (p.isNotBlank()) {
+                heardSomething = true
+                emptyInARow = 0
+            }
             _state.update { it.copy(partial = p) }
         }
 
@@ -147,17 +191,37 @@ class ContinuousRecognizer(private val context: Context) {
                 ?.firstOrNull()
                 .orEmpty()
             _state.update { it.copy(text = join(it.text, frase), partial = "") }
-            restartLater(150)
+            if (frase.isBlank()) {
+                emptyRound()
+            } else {
+                heardSomething = true
+                emptyInARow = 0
+                restartLater(250)
+            }
         }
 
         override fun onError(error: Int) {
             when (error) {
                 SpeechRecognizer.ERROR_NO_MATCH,
-                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> restartLater(150)
+                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> emptyRound()
 
-                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
+                SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
+                SpeechRecognizer.ERROR_CLIENT -> {
                     runCatching { recognizer?.cancel() }
-                    restartLater(600)
+                    errorsInARow++
+                    if (errorsInARow >= 5) {
+                        fail("L'ascolto continuo non funziona su questo telefono: usa il microfono di Google qui sotto.")
+                    } else {
+                        restartLater(700, fresh = true)
+                    }
+                }
+
+                // Lingua offline non installata: si passa a quella con internet.
+                12, 13 -> if (preferOffline) {
+                    preferOffline = false
+                    restartLater(400, fresh = true)
+                } else {
+                    fail("Il riconoscimento vocale in italiano non e' disponibile. Usa il microfono di Google qui sotto.")
                 }
 
                 // Di solito non manca al Diario ma al servizio vocale di
@@ -182,11 +246,15 @@ class ContinuousRecognizer(private val context: Context) {
                     if (errorsInARow >= 5) {
                         fail("L'ascolto continuo non funziona su questo telefono: usa il microfono di Google qui sotto.")
                     } else {
-                        restartLater(400)
+                        restartLater(500, fresh = true)
                     }
                 }
             }
         }
+    }
+
+    private companion object {
+        const val MAX_EMPTY = 4
     }
 
     private fun fail(message: String) {
