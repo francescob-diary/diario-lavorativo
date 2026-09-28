@@ -6,6 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.time.LocalTime
 
@@ -100,5 +101,38 @@ class DictationParsingTest {
     fun cantiereRiconosciutoDaPezzoDiNome() {
         assertEquals(2L, SiteNameMatcher.match("rivoli", cantieri)?.id)
         assertNull(SiteNameMatcher.match("capannone di Orbassano", cantieri))
+    }
+}
+
+class DictationSitesTidyTest {
+
+    private val cantieri = listOf(Site(id = 7, name = "Montenero", city = "Livorno"))
+
+    @Test
+    fun zonaNonDiventaCantiereEIlNotoVaPrimo() {
+        val risposta = """{"cantieri":[{"nome":"Longe","ore":null,"lavoro":"cubo"},{"nome":"Montenero","ore":null,"lavoro":null}],"lavoro":"creazione cubo nella zona longe"}"""
+        val d = DictationResponseParser.parse(risposta, cantieri)!!
+        assertEquals(1, d.sites.size)
+        assertEquals(7L, d.sites[0].siteId)
+    }
+
+    @Test
+    fun sconosciutoConOreResta() {
+        val risposta = """{"cantieri":[{"nome":"Montenero"},{"nome":"Villa Bianchi","ore":3}]}"""
+        val d = DictationResponseParser.parse(risposta, cantieri)!!
+        assertEquals(listOf(7L, null), d.sites.map { it.siteId })
+    }
+
+    @Test
+    fun soloSconosciutiRestano() {
+        val d = DictationResponseParser.parse("""{"cantieri":[{"nome":"Villa Bianchi"}]}""", cantieri)!!
+        assertEquals("Villa Bianchi", d.sites.single().name)
+    }
+
+    @Test
+    fun riconosceLeZone() {
+        assertTrue(SiteNameMatcher.looksLikeZone("zona lounge"))
+        assertTrue(SiteNameMatcher.looksLikeZone("bagno al primo piano"))
+        assertFalse(SiteNameMatcher.looksLikeZone("Montenero"))
     }
 }

@@ -38,6 +38,8 @@ Regole:
 - Orari in formato HH:MM sulle 24 ore. Di pomeriggio "le cinque" sono "17:00".
 - Se un dato non e' stato detto metti null o una lista vuota. Non inventare niente.
 - cantieri: il primo e' il principale. "ore" solo se ha detto quante ore ha fatto in quel cantiere.
+- Una zona o una stanza (lounge, bagno, cucina, piano terra, facciata) NON e' un cantiere: va nel lavoro, es. "cubo nella zona lounge".
+- Se nomina un cantiere solo per sbaglio o per dire dove si trova una cosa, non aggiungerlo.
 - Se un cantiere corrisponde a uno di questi, scrivi il nome esatto: $cantieri
 - lavoro: cosa ha fatto, in poche parole. materiali: i materiali nominati.
 - spostamenti: viaggi da un posto a un altro, con gli orari se detti.

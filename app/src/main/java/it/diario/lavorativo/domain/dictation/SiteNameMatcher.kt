@@ -26,6 +26,25 @@ object SiteNameMatcher {
     private fun tokens(text: String): Set<String> =
         normalize(text).split(' ').filter { it.length >= 3 && it !in PAROLE_VUOTE }.toSet()
 
+    private val ZONE = setOf(
+        "zona", "area", "lounge", "longe", "lonsg", "bagno", "bagni", "cucina", "soggiorno",
+        "salone", "sala", "camera", "camere", "stanza", "stanze", "corridoio", "ingresso",
+        "piano", "terra", "primo", "secondo", "terrazzo", "terrazza", "balcone", "cortile",
+        "scala", "scale", "facciata", "tetto", "sottotetto", "cantina", "reception", "hall",
+        "ufficio", "uffici", "spogliatoio", "spogliatoi", "parete", "pareti", "muro", "soffitto",
+        "pavimento", "cubo"
+    )
+
+    /**
+     * "Zona lounge", "bagno al primo piano": parti di un cantiere, non
+     * cantieri. Vero se tutte le parole del nome sono di questo tipo.
+     */
+    fun looksLikeZone(name: String): Boolean {
+        val parole = normalize(name).split(' ')
+            .filter { it.isNotEmpty() && it !in PAROLE_VUOTE && it.none(Char::isDigit) }
+        return parole.isNotEmpty() && parole.all { it in ZONE }
+    }
+
     /** Il cantiere che corrisponde meglio a [spoken], se la somiglianza basta. */
     fun match(spoken: String, sites: List<Site>): Site? {
         val detto = normalize(spoken)

@@ -34,6 +34,7 @@ object DictationResponseParser {
                 work = c.text("lavoro")
             )
         }.distinctBy { it.siteId ?: it.name.lowercase() }
+            .let { tidySites(it) }
 
         val pause = obj.objects("pause").mapNotNull { p ->
             val da = p.time("da") ?: return@mapNotNull null
@@ -69,6 +70,21 @@ object DictationResponseParser {
             notes = obj.text("note"),
             questions = domande
         )
+    }
+
+    /**
+     * Pulizia dei cantieri proposti dal modello:
+     * - le zone di un cantiere (lounge, bagno, cucina, piano terra...) non
+     *   sono cantieri: si tolgono;
+     * - i cantieri gia' registrati vanno davanti a quelli sconosciuti;
+     * - se ce n'e' almeno uno registrato, gli sconosciuti senza ore si
+     *   scartano: quasi sempre sono pezzi del racconto presi per nomi.
+     */
+    internal fun tidySites(list: List<DraftSite>): List<DraftSite> {
+        val senzaZone = list.filter { it.siteId != null || !SiteNameMatcher.looksLikeZone(it.name) }
+        val noti = senzaZone.filter { it.siteId != null }
+        val ignoti = senzaZone.filter { it.siteId == null }
+        return if (noti.isEmpty()) ignoti else noti + ignoti.filter { it.minutes != null }
     }
 
     /** Il pezzo fra la prima { e l'ultima }, con le correzioni piu' comuni. */
