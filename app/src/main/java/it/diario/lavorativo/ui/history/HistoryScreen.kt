@@ -1,5 +1,10 @@
 package it.diario.lavorativo.ui.history
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.heightIn
@@ -92,7 +97,8 @@ fun HistoryScreen(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(title = { Text("Storico") })
+            // Niente barra del titolo: il mese in cima dice gia' dove si e',
+            // e lo spazio serve al calendario.
         }
     ) { padding ->
         Column(
@@ -111,37 +117,31 @@ fun HistoryScreen(
                 onToday = viewModel::goToCurrentMonth
             )
 
-            Spacer(Modifier.height(8.dp))
+            CompactTotals(state)
 
-            TotalsCard(state)
+            Spacer(Modifier.height(6.dp))
 
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedButton(
-                onClick = onOpenWeekly,
-                modifier = Modifier.fillMaxWidth().height(52.dp)
+            // Viste e rapportino sulla stessa fila, scorrevole se non ci sta.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("RAPPORTINO SETTIMANALE")
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // Quattro modi di guardare lo storico: elenco, mese, settimana, giorno.
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                HistoryView.entries.forEachIndexed { i, v ->
-                    SegmentedButton(
+                HistoryView.entries.forEach { v ->
+                    FilterChip(
                         selected = state.view == v,
                         onClick = { viewModel.showView(v) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = i,
-                            count = HistoryView.entries.size
-                        ),
-                        icon = {}
-                    ) { Text(v.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
+                        label = { Text(v.label, maxLines = 1) }
+                    )
                 }
+                AssistChip(
+                    onClick = onOpenWeekly,
+                    label = { Text("Rapportino", maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Filled.Description, contentDescription = null) }
+                )
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             when {
                 state.loading -> Box(
@@ -225,7 +225,7 @@ private fun MonthHeader(
         ) {
             Text(
                 text = monthLabel(month),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             if (!isCurrentMonth) {
@@ -402,7 +402,7 @@ private fun CalendarMonth(
     onSelect: (LocalDate?) -> Unit,
     onOpenDay: (LocalDate) -> Unit
 ) {
-    Column {
+    Column(Modifier.verticalScroll(rememberScrollState())) {
         Row(modifier = Modifier.fillMaxWidth()) {
             listOf("L", "M", "M", "G", "V", "S", "D").forEach { initial ->
                 Text(
@@ -501,20 +501,22 @@ private fun DayBox(
         else -> MaterialTheme.colorScheme.onSurface
     }
 
+    // Altezza fissa e non "quadrata": cosi' le settimane non si schiacciano
+    // una sull'altra quando lo spazio e' poco o i caratteri sono grandi.
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .height(52.dp)
             .padding(2.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(CircleShape)
+                .clip(RoundedCornerShape(10.dp))
                 .background(background)
                 .then(
                     if (cell.isToday && !cell.isSelected) {
-                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp))
                     } else {
                         Modifier
                     }
@@ -527,13 +529,15 @@ private fun DayBox(
                     text = cell.date.dayOfMonth.toString(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = textColor,
-                    fontWeight = if (cell.hasData) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (cell.hasData) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1
                 )
                 cell.summary?.let { summary ->
                     Text(
                         text = summary.net.toHours().toString() + "h",
                         style = MaterialTheme.typography.labelSmall,
-                        color = textColor
+                        color = textColor,
+                        maxLines = 1
                     )
                 }
             }
@@ -735,4 +739,24 @@ private fun DayView(
         }
         Spacer(Modifier.height(24.dp))
     }
+}
+
+/** Totali del mese in una riga sola: il calendario ha bisogno di spazio. */
+@Composable
+private fun CompactTotals(state: HistoryUiState) {
+    val t = state.totals
+    val pezzi = buildList {
+        add(t.workedDays.toString() + if (t.workedDays == 1) " giornata" else " giornate")
+        add(DurationFormat.short(t.net) + " nette")
+        if (!t.overtime.isZero) add("straord. " + DurationFormat.short(t.overtime))
+    }
+    Text(
+        text = pezzi.joinToString("  ·  "),
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 2,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
 }

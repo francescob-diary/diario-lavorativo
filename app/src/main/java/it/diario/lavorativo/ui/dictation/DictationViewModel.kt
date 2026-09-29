@@ -200,17 +200,19 @@ class DictationViewModel(
             regole
         }
 
-        // Domande: solo se non se ne sono gia' fatte troppe.
+        // Domande: solo se non se ne sono gia' fatte troppe. Sugli orari
+        // non si chiede mai: se non sono stati detti valgono quelli standard.
         val spazio = (MAX_QUESTIONS - askedCount).coerceAtLeast(0)
         val domande = draft.questions
             .filter { q -> _uiState.value.answers.none { it.first.equals(q, ignoreCase = true) } }
+            .filterNot { DictationDefaults.isAboutTimes(it) }
             .take(minOf(2, spazio))
 
         _uiState.update {
             it.copy(
                 usedModel = usato,
                 progress = null,
-                form = draft.toForm(),
+                form = DictationDefaults.apply(draft).toForm(),
                 questions = domande,
                 stage = if (domande.isEmpty()) DictationStage.CONFERMA else DictationStage.DOMANDE
             )

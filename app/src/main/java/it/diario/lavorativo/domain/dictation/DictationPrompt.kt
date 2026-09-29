@@ -43,7 +43,8 @@ Regole:
 - Se un cantiere corrisponde a uno di questi, scrivi il nome esatto: $cantieri
 - lavoro: cosa ha fatto, in poche parole. materiali: i materiali nominati.
 - spostamenti: viaggi da un posto a un altro, con gli orari se detti.
-- domande: al massimo 2 domande brevi, solo se manca un dato importante (orari, cantiere, lavoro fatto).
+- Se gli orari non sono detti lasciali null: valgono quelli standard 08:00-17:00 con pausa 12:00-13:00.
+- domande: al massimo 2 domande brevi, solo se manca il cantiere o il lavoro fatto. Mai sugli orari.
 
 Oggi e' ${date.format(DATA)}.
 $risposte

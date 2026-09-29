@@ -1,5 +1,8 @@
 package it.diario.lavorativo
 
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -60,6 +63,16 @@ class MainActivity : ComponentActivity() {
                 onDispose { removeOnNewIntentListener(listener) }
             }
 
+            // Caratteri ingranditi dal telefono: si rispettano, ma fino a un
+            // certo punto. Oltre, le scritte vanno a capo ovunque e il
+            // calendario non ci sta piu' nello schermo.
+            val densita = LocalDensity.current
+            CompositionLocalProvider(
+                LocalDensity provides Density(
+                    densita.density,
+                    densita.fontScale.coerceAtMost(MAX_FONT_SCALE)
+                )
+            ) {
             DiarioLavorativoTheme {
                 DiarioNavHost(
                     sharedText = shared,
@@ -69,6 +82,7 @@ class MainActivity : ComponentActivity() {
                     openDictation = openDictation,
                     onDictationOpened = { openDictation = false }
                 )
+            }
             }
         }
     }
@@ -96,3 +110,5 @@ class MainActivity : ComponentActivity() {
         )
     }
 }
+
+private const val MAX_FONT_SCALE = 1.15f

@@ -40,6 +40,7 @@ class ContinuousRecognizer(private val context: Context) {
     val state: StateFlow<ListeningState> = _state.asStateFlow()
 
     private val handler = Handler(Looper.getMainLooper())
+    private val sounds = ListeningSounds(context)
     private var recognizer: SpeechRecognizer? = null
     private var wanted = false
     private var errorsInARow = 0
@@ -62,6 +63,7 @@ class ContinuousRecognizer(private val context: Context) {
             return
         }
         wanted = true
+        sounds.begin()
         _state.value = ListeningState(listening = true, text = initialText)
         if (recognizer == null) {
             recognizer = SpeechRecognizer.createSpeechRecognizer(context).also {
@@ -73,6 +75,7 @@ class ContinuousRecognizer(private val context: Context) {
 
     fun stop() {
         wanted = false
+        sounds.end()
         handler.removeCallbacksAndMessages(null)
         runCatching { recognizer?.stopListening() }
         // La frase a meta' non va persa: si tiene quello che si e' sentito.
@@ -90,6 +93,7 @@ class ContinuousRecognizer(private val context: Context) {
 
     fun release() {
         wanted = false
+        sounds.end()
         handler.removeCallbacksAndMessages(null)
         runCatching { recognizer?.destroy() }
         recognizer = null
@@ -259,6 +263,7 @@ class ContinuousRecognizer(private val context: Context) {
 
     private fun fail(message: String) {
         wanted = false
+        sounds.end()
         _state.update { s ->
             s.copy(listening = false, error = message, text = join(s.text, s.partial), partial = "")
         }

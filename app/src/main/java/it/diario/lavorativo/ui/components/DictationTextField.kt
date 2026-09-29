@@ -74,11 +74,17 @@ fun DictationTextField(
     )
 }
 
-/** Richiesta di dettatura in italiano, senza rete se possibile. */
+/**
+ * Richiesta di dettatura in italiano con la finestrella di Google.
+ *
+ * Non si chiede di lavorare senza rete: senza il pacchetto dell'italiano
+ * offline Google risponde "ricerca vocale non disponibile". Se il pacchetto
+ * c'e', Google lo usa comunque da solo.
+ */
 fun dictationIntent(prompt: String = "Parla pure"): Intent =
     Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
         putExtra(RecognizerIntent.EXTRA_LANGUAGE, "it-IT")
-        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "it-IT")
         putExtra(RecognizerIntent.EXTRA_PROMPT, prompt)
     }

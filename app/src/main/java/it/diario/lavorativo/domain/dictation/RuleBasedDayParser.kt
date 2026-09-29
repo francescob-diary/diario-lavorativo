@@ -104,9 +104,6 @@ object RuleBasedDayParser {
         }
 
         val domande = buildList {
-            if (tipo == DayType.LAVORO && (inizio == null || fine == null)) {
-                add("A che ora hai iniziato e a che ora hai finito?")
-            }
             if (tipo == DayType.LAVORO && cantieri.isEmpty() && sites.isNotEmpty()) {
                 add("In che cantiere hai lavorato?")
             }

@@ -1,5 +1,9 @@
 package it.diario.lavorativo.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.height
 import it.diario.lavorativo.ui.dictation.DictationScreen
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -52,7 +56,14 @@ fun DiarioNavHost(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
-            NavigationBar {
+            // Barra bassa: icone sole, la scritta compare solo sulla sezione
+            // in cui ci si trova. Lo spazio risparmiato va alle schermate.
+            // Lo spazio dei tasti di sistema si aggiunge fuori, cosi' i 64dp
+            // restano tutti per le icone.
+            NavigationBar(
+                modifier = Modifier.navigationBarsPadding().height(64.dp),
+                windowInsets = WindowInsets(0, 0, 0, 0)
+            ) {
                 DiarioDestination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route ||
@@ -82,7 +93,14 @@ fun DiarioNavHost(
                             }
                         },
                         icon = { Icon(destination.icon, contentDescription = destination.label) },
-                        label = { Text(destination.label) }
+                        label = {
+                            Text(
+                                destination.label,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        alwaysShowLabel = false
                     )
                 }
             }

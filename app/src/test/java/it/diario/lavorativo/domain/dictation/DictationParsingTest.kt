@@ -50,10 +50,20 @@ class DictationParsingTest {
     }
 
     @Test
-    fun seMancanoGliOrariChiede() {
-        val d = RuleBasedDayParser.parse("ho rasato le pareti", cantieri)
-        assertNull(d.start)
-        assertTrue(d.questions.isNotEmpty())
+    fun seMancanoGliOrariValgonoQuelliStandard() {
+        val d = DictationDefaults.apply(RuleBasedDayParser.parse("ho rasato le pareti in viale sarca", cantieri))
+        assertEquals(LocalTime.of(8, 0), d.start)
+        assertEquals(LocalTime.of(17, 0), d.end)
+        assertEquals(listOf(DraftBreak(LocalTime.of(12, 0), LocalTime.of(13, 0))), d.breaks)
+        assertTrue(d.questions.none { DictationDefaults.isAboutTimes(it) })
+    }
+
+    @Test
+    fun orariDettiVinconoSuiDefault() {
+        val d = DictationDefaults.apply(RuleBasedDayParser.parse("dalle 7 alle 12", cantieri))
+        assertEquals(LocalTime.of(7, 0), d.start)
+        assertEquals(LocalTime.of(12, 0), d.end)
+        assertTrue(d.breaks.isEmpty())
     }
 
     @Test
