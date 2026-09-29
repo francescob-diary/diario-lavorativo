@@ -11,6 +11,7 @@ import it.diario.lavorativo.core.llm.LlmProgress
 import it.diario.lavorativo.core.llm.LlmResult
 import it.diario.lavorativo.core.llm.LocalLlm
 import it.diario.lavorativo.core.time.AppClock
+import it.diario.lavorativo.domain.dictation.DictationDefaults
 import it.diario.lavorativo.domain.dictation.DictationDraft
 import it.diario.lavorativo.domain.dictation.DictationPrompt
 import it.diario.lavorativo.domain.dictation.DictationResponseParser
