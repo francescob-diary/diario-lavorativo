@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.navigation
 
+import it.diario.lavorativo.ui.history.DaySummaryScreen
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,6 @@ import it.diario.lavorativo.ui.sites.SiteEditScreen
 import it.diario.lavorativo.ui.weekly.WeeklyScreen
 import it.diario.lavorativo.ui.sites.SitesScreen
 import it.diario.lavorativo.ui.settings.SettingsScreen
-import it.diario.lavorativo.ui.stats.StatsScreen
 import it.diario.lavorativo.ui.today.TodayScreen
 
 /** Struttura di navigazione dell'app: barra in basso + NavHost. */
@@ -77,6 +77,7 @@ fun DiarioNavHost(
                                     currentRoute == VEHICLE_ROUTE)) ||
                             (destination == DiarioDestination.CALENDARIO &&
                                 (currentRoute.startsWith(DAY_ROUTE_PREFIX) ||
+                                    currentRoute.startsWith(SUMMARY_ROUTE_PREFIX) ||
                                     currentRoute.startsWith(ENTRIES_ROUTE_PREFIX) ||
                                     currentRoute.startsWith(PHOTOS_ROUTE_PREFIX) ||
                                     currentRoute.startsWith(VOICE_ROUTE_PREFIX) ||
@@ -167,8 +168,10 @@ fun DiarioNavHost(
             }
             composable(DiarioDestination.CALENDARIO.route) {
                 HistoryScreen(
+                    // Dal calendario si vede la giornata compilata; per
+                    // cambiarla c'e' MODIFICA dentro il riepilogo.
                     onOpenDay = { date ->
-                        navController.navigate(DAY_ROUTE_PREFIX + date.toEpochDay().toString())
+                        navController.navigate(SUMMARY_ROUTE_PREFIX + date.toEpochDay().toString())
                     },
                     onOpenWeekly = { navController.navigate(WEEKLY_ROUTE) }
                 )
@@ -222,17 +225,29 @@ fun DiarioNavHost(
             composable(WEEKLY_ROUTE) {
                 WeeklyScreen(
                     onOpenDay = { date ->
-                        navController.navigate(DAY_ROUTE_PREFIX + date.toEpochDay().toString())
+                        navController.navigate(SUMMARY_ROUTE_PREFIX + date.toEpochDay().toString())
                     }
                 )
             }
-            composable(DiarioDestination.STATISTICHE.route) {
-                StatsScreen()
+            composable(
+                route = SUMMARY_ROUTE,
+                arguments = listOf(navArgument(DAY_ARG) { type = NavType.LongType })
+            ) { entry ->
+                val epochDay = entry.arguments?.getLong(DAY_ARG) ?: 0L
+                DaySummaryScreen(
+                    epochDay = epochDay,
+                    onBack = { navController.popBackStack() },
+                    onEdit = { navController.navigate(DAY_ROUTE_PREFIX + epochDay.toString()) },
+                    onOpenPhotos = { navController.navigate(PHOTOS_ROUTE_PREFIX + epochDay.toString()) }
+                )
             }
             composable(DiarioDestination.CANTIERI.route) {
                 SitesScreen(
                     onOpenSite = { siteId ->
                         navController.navigate(SITE_EDIT_ROUTE_PREFIX + siteId.toString())
+                    },
+                    onOpenDay = { date ->
+                        navController.navigate(SUMMARY_ROUTE_PREFIX + date.toEpochDay().toString())
                     }
                 )
             }
@@ -293,5 +308,7 @@ private const val PHOTOS_ROUTE_PREFIX = "foto/"
 private const val PHOTOS_ROUTE = PHOTOS_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val ENTRIES_ROUTE_PREFIX = "voci/"
 private const val DICTATION_ROUTE_PREFIX = "dettatura/"
+private const val SUMMARY_ROUTE_PREFIX = "riepilogo/"
+private const val SUMMARY_ROUTE = SUMMARY_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val DICTATION_ROUTE = DICTATION_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 private const val ENTRIES_ROUTE = ENTRIES_ROUTE_PREFIX + "{" + DAY_ARG + "}"

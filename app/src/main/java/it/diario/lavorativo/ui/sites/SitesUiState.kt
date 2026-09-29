@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.sites
 
+import it.diario.lavorativo.domain.service.SiteDay
 import it.diario.lavorativo.domain.model.Site
 import it.diario.lavorativo.domain.model.SiteStatus
 
@@ -9,7 +10,9 @@ data class SitesUiState(
     val sites: List<Site> = emptyList(),
     val showTerminated: Boolean = false,
     val query: String = "",
-    val message: String? = null
+    val message: String? = null,
+    /** Per ogni cantiere, i giorni lavorati li' (dal piu' recente). */
+    val daysBySite: Map<Long, List<SiteDay>> = emptyMap()
 ) {
     val visibleSites: List<Site>
         get() = sites

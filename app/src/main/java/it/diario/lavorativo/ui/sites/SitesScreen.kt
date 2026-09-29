@@ -1,5 +1,14 @@
 package it.diario.lavorativo.ui.sites
 
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import it.diario.lavorativo.core.time.DurationFormat
+import it.diario.lavorativo.domain.service.SiteDay
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +56,7 @@ import it.diario.lavorativo.domain.model.SiteStatus
 @Composable
 fun SitesScreen(
     onOpenSite: (Long) -> Unit,
+    onOpenDay: (java.time.LocalDate) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SitesViewModel = viewModel(factory = SitesViewModel.Factory)
 ) {
@@ -113,6 +123,8 @@ fun SitesScreen(
                     items(state.visibleSites, key = { it.id }) { site ->
                         SiteCard(
                             site = site,
+                            days = state.daysBySite[site.id].orEmpty(),
+                            onOpenDay = onOpenDay,
                             onClick = { onOpenSite(site.id) },
                             onArchive = { viewModel.archive(site) },
                             onReactivate = { viewModel.reactivate(site) }
@@ -129,13 +141,16 @@ fun SitesScreen(
 @Composable
 private fun SiteCard(
     site: Site,
+    days: List<SiteDay>,
+    onOpenDay: (java.time.LocalDate) -> Unit,
     onClick: () -> Unit,
     onArchive: () -> Unit,
     onReactivate: () -> Unit
 ) {
     val archived = site.status == SiteStatus.TERMINATO
+    var aperto by rememberSaveable(site.id) { mutableStateOf(false) }
     Card(
-        onClick = onClick,
+        onClick = { aperto = !aperto },
         modifier = Modifier.fillMaxWidth(),
         colors = if (archived) {
             CardDefaults.cardColors(
@@ -161,6 +176,9 @@ private fun SiteCard(
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
+                IconButton(onClick = onClick) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Modifica cantiere")
+                }
             }
             site.fullAddress?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium)
@@ -171,6 +189,20 @@ private fun SiteCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            // Riepilogo dei giorni lavorati; toccando la scheda si aprono.
+            Spacer(Modifier.height(6.dp))
+            val totale = days.fold(java.time.Duration.ZERO) { a, d -> a.plus(d.hours) }
+            Text(
+                text = if (days.isEmpty()) "Nessun giorno lavorato" else
+                    days.size.toString() + (if (days.size == 1) " giorno" else " giorni") +
+                        "  ·  " + DurationFormat.short(totale) +
+                        "  ·  ultimo " + days.first().date.format(GIORNO_BREVE),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (aperto && days.isNotEmpty()) {
+                SiteDaysTable(days = days, onOpenDay = onOpenDay)
             }
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,3 +240,64 @@ private fun EmptySites() {
         }
     }
 }
+
+private val GIORNO_BREVE: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("d/MM")
+
+private val MESE: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.ITALIAN)
+
+/**
+ * Tabella dei giorni lavorati su un cantiere, mese per mese: giorno,
+ * iniziale del giorno della settimana e ore. Un tocco apre la giornata.
+ */
+@Composable
+private fun SiteDaysTable(days: List<SiteDay>, onOpenDay: (java.time.LocalDate) -> Unit) {
+    Column(Modifier.padding(top = 8.dp)) {
+        days.groupBy { java.time.YearMonth.from(it.date) }.forEach { (mese, giorni) ->
+            val oreMese = giorni.fold(java.time.Duration.ZERO) { a, d -> a.plus(d.hours) }
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                Text(
+                    mese.format(MESE).replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    giorni.size.toString() + " gg  ·  " + DurationFormat.short(oreMese),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            giorni.sortedBy { it.date }.chunked(4).forEach { riga ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    riga.forEach { g ->
+                        OutlinedButton(
+                            onClick = { onOpenDay(g.date) },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    g.date.dayOfMonth.toString() + " " + LETTERE[g.date.dayOfWeek.value - 1],
+                                    style = MaterialTheme.typography.labelLarge,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    DurationFormat.short(g.hours),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                    repeat(4 - riga.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+private val LETTERE = listOf("L", "M", "M", "G", "V", "S", "D")

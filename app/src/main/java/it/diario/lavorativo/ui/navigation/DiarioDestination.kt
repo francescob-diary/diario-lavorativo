@@ -3,7 +3,6 @@ package it.diario.lavorativo.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Domain
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -16,7 +15,6 @@ enum class DiarioDestination(
 ) {
     OGGI("oggi", "Oggi", Icons.Filled.Home),
     CALENDARIO("calendario", "Calendario", Icons.Filled.CalendarMonth),
-    STATISTICHE("statistiche", "Statistiche", Icons.Filled.Insights),
     CANTIERI("cantieri", "Cantieri", Icons.Outlined.Domain),
     IMPOSTAZIONI("impostazioni", "Impostazioni", Icons.Filled.Settings)
 }
