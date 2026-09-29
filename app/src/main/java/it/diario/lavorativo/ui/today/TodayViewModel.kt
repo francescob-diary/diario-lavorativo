@@ -316,9 +316,16 @@ class TodayViewModel(
     }
 
     /** Accetta il cantiere suggerito dal GPS. */
-    fun acceptSuggestion(siteId: Long) {
+    /**
+     * Cantiere riconosciuto dal GPS: si imposta e basta. Se la giornata non
+     * c'e' ancora la si crea vuota, senza farla partire: aprire l'app la
+     * sera non deve far iniziare una giornata alle nove di sera.
+     */
+    fun acceptSuggestion(siteId: Long) = viewModelScope.launch {
         suggestionState.value = SiteSuggestion.Idle
-        selectSite(siteId)
+        val day = uiState.value.day
+        val id = day?.id ?: workDayRepository.createEmptyDay(clock.today(), DayType.LAVORO)
+        workDayRepository.updateSite(id, siteId)
     }
 
     fun showDialog(dialog: TodayDialog) {

@@ -113,6 +113,58 @@ fun TodayScreen(
         }
     }
 
+    // Esito del GPS: un cantiere solo si imposta subito; se non si trova
+    // niente, un avviso breve. Piu' cantieri vicini si scelgono nella riga.
+    LaunchedEffect(state.suggestion) {
+        when (val s = state.suggestion) {
+            is SiteSuggestion.Found -> {
+                viewModel.acceptSuggestion(s.site.id)
+                snackbarHostState.showSnackbar("Cantiere riconosciuto: " + s.site.name)
+            }
+            is SiteSuggestion.OutOfRange -> {
+                viewModel.clearSuggestion()
+                snackbarHostState.showSnackbar(
+                    if (s.nearestName != null && s.distanceMeters != null) {
+                        "Nessun cantiere qui. Il piu' vicino e' " + s.nearestName +
+                            " a " + s.distanceMeters.toString() + " m"
+                    } else "Nessun cantiere qui vicino"
+                )
+            }
+            SiteSuggestion.NoGeolocatedSites -> {
+                viewModel.clearSuggestion()
+                snackbarHostState.showSnackbar(
+                    "Nessun cantiere ha la posizione: aprilo dalla sezione Cantieri stando sul posto e premi Registra qui"
+                )
+            }
+            is SiteSuggestion.Unavailable -> {
+                viewModel.clearSuggestion()
+                snackbarHostState.showSnackbar(s.reason)
+            }
+            else -> Unit
+        }
+    }
+
+    // Aprendo Oggi senza cantiere scelto, lo si cerca da solo col GPS, ma
+    // solo se il permesso della posizione e' gia' stato dato: nessuna
+    // richiesta a sorpresa appena si apre l'app.
+    val contesto = androidx.compose.ui.platform.LocalContext.current
+    var cercatoDaSolo by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isLoading, state.day?.site, state.activeSites.size) {
+        if (cercatoDaSolo || state.isLoading) return@LaunchedEffect
+        if (state.day?.site != null || state.activeSites.isEmpty()) return@LaunchedEffect
+        val permesso = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ).any {
+            androidx.core.content.ContextCompat.checkSelfPermission(contesto, it) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (permesso) {
+            cercatoDaSolo = true
+            viewModel.detectSite()
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -143,16 +195,13 @@ fun TodayScreen(
             )
 
             Spacer(Modifier.height(12.dp))
+            // Cantiere e riconoscimento GPS nella stessa riga.
             SiteRow(
                 siteLabel = state.day?.site?.displayLabel,
-                onClick = { viewModel.showDialog(TodayDialog.SCELTA_CANTIERE) }
-            )
-
-            Spacer(Modifier.height(12.dp))
-            SiteDetectionCard(
                 suggestion = state.suggestion,
-                onDetect = requestDetect,
-                onAccept = viewModel::acceptSuggestion,
+                onClick = { viewModel.showDialog(TodayDialog.SCELTA_CANTIERE) },
+                onGps = requestDetect,
+                onPick = viewModel::acceptSuggestion,
                 onDismiss = viewModel::clearSuggestion
             )
 
@@ -432,7 +481,14 @@ private fun TimeRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SiteRow(siteLabel: String?, onClick: () -> Unit) {
+private fun SiteRow(
+    siteLabel: String?,
+    suggestion: SiteSuggestion,
+    onClick: () -> Unit,
+    onGps: () -> Unit,
+    onPick: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -454,11 +510,37 @@ private fun SiteRow(siteLabel: String?, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = siteLabel ?: "Non selezionato",
+                    text = when {
+                        suggestion == SiteSuggestion.Searching -> "Cerco col GPS..."
+                        else -> siteLabel ?: "Non selezionato"
+                    },
                     style = MaterialTheme.typography.titleMedium
                 )
             }
+            if (suggestion == SiteSuggestion.Searching) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else {
+                IconButton(onClick = onGps) {
+                    Icon(Icons.Filled.MyLocation, contentDescription = "Riconosci col GPS")
+                }
+            }
             Icon(Icons.Filled.Edit, contentDescription = "Cambia cantiere")
+        }
+        // Piu' cantieri vicini: si sceglie con un tocco.
+        if (suggestion is SiteSuggestion.Several) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+                Text("Piu' cantieri vicini, quale?", style = MaterialTheme.typography.bodyMedium)
+                suggestion.candidates.forEach { c ->
+                    TextButton(onClick = { onPick(c.site.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            c.site.name + " - " + c.distanceMeters.toInt().toString() + " m",
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Nessuno di questi") }
+            }
         }
     }
 }

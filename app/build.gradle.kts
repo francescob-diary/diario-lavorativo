@@ -13,8 +13,8 @@ android {
         applicationId = "it.diario.lavorativo"
         minSdk = 26          // java.time nativo, niente desugaring
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.2.0"
+        versionCode = 23
+        versionName = "2.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
