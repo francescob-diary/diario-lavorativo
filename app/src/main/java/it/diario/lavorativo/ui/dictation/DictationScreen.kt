@@ -94,6 +94,22 @@ fun DictationScreen(
         }
     }
 
+    // Si esce dall'app (tasto Home, altra app, schermo spento): il microfono
+    // si spegne subito e la voce smette di parlare. Il testo gia' dettato
+    // resta; per continuare basta ritoccare il microfono.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                racconto.stop()
+                risposta.stop()
+                voce.stop()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val ascolto by racconto.state.collectAsStateWithLifecycle()
     val ascoltoRisposta by risposta.state.collectAsStateWithLifecycle()
 
