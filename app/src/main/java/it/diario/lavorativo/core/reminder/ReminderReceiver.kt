@@ -57,10 +57,18 @@ class ReminderReceiver : BroadcastReceiver() {
                         runCatching { dailyReminder(context) }
                         runCatching { rescheduleDaily(context, LocalDateTime.now().plusMinutes(1)) }
                     }
+                    ACTION_LOAN_REMINDER -> {
+                        runCatching { loanReminder(context) }
+                        runCatching {
+                            LoanReminderScheduler(context.applicationContext)
+                                .schedule(LocalDateTime.now().plusMinutes(1))
+                        }
+                    }
                     Intent.ACTION_BOOT_COMPLETED,
                     Intent.ACTION_MY_PACKAGE_REPLACED -> {
                         runCatching { rescheduleWeekly(context) }
                         runCatching { rescheduleDaily(context, LocalDateTime.now()) }
+                        runCatching { LoanReminderScheduler(context.applicationContext).schedule() }
                     }
                 }
             } finally {
@@ -85,6 +93,54 @@ class ReminderReceiver : BroadcastReceiver() {
         val oggi = appContainer(context).workDayRepository.getDay(LocalDate.now())
         if (!DailyReminderCalculator.isDayCompiled(oggi)) {
             showDailyNotification(context)
+        }
+    }
+
+    /** 16:30: se qualcosa prestato non e' ancora tornato, lo ricorda. */
+    private suspend fun loanReminder(context: Context) {
+        val fuori = appContainer(context).stuffRepository.openLoans()
+        if (fuori.isEmpty()) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+                NotificationChannel(
+                    LOAN_CHANNEL_ID,
+                    "Cose prestate",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply { description = "Alle 16:30 ricorda le cose prestate non ancora restituite" }
+            )
+        }
+        val open = PendingIntent.getActivity(
+            context,
+            LOAN_REQUEST_CODE,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(EXTRA_OPEN_LOANS, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val righe = fuori.map { it.what + " a " + it.toWhom + " (dal " + DAY_SHORT.format(it.loanDate) + ")" }
+        val titolo = if (fuori.size == 1) "1 cosa prestata da riprendere" else "${fuori.size} cose prestate da riprendere"
+        val style = NotificationCompat.InboxStyle()
+        righe.take(7).forEach { style.addLine(it) }
+        if (righe.size > 7) style.setSummaryText("e altre " + (righe.size - 7))
+        val notification = NotificationCompat.Builder(context, LOAN_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(titolo)
+            .setContentText(righe.joinToString("; "))
+            .setStyle(style)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(LOAN_NOTIFICATION_ID, notification)
         }
     }
 
@@ -186,6 +242,12 @@ class ReminderReceiver : BroadcastReceiver() {
         const val ACTION_WEEKLY_REMINDER = "it.diario.lavorativo.PROMEMORIA_SETTIMANALE"
         const val ACTION_DAILY_REMINDER = "it.diario.lavorativo.PROMEMORIA_GIORNALIERO"
         const val EXTRA_OPEN_DICTATION = "apri_dettatura"
+        const val ACTION_LOAN_REMINDER = "it.diario.lavorativo.PROMEMORIA_PRESTITI"
+        const val EXTRA_OPEN_LOANS = "apri_prestiti"
+        private const val LOAN_CHANNEL_ID = "cose_prestate"
+        private const val LOAN_NOTIFICATION_ID = 4401
+        private const val LOAN_REQUEST_CODE = 4402
+        private val DAY_SHORT: DateTimeFormatter = DateTimeFormatter.ofPattern("d/M")
         private const val DAILY_CHANNEL_ID = "fine_giornata"
         private const val DAILY_NOTIFICATION_ID = 4301
         private const val DAILY_REQUEST_CODE = 4302

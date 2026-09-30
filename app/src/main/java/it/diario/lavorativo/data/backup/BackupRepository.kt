@@ -46,6 +46,8 @@ class BackupRepository(
             maintenances = database.maintenanceDao().allForBackup().map { it.toBackup() },
             daySites = database.daySiteDao().allForBackup().map { it.toBackup() },
             trips = database.tripDao().allForBackup().map { it.toBackup() },
+            tools = database.stuffDao().allToolsForBackup().map { it.toBackup() },
+            loans = database.stuffDao().allLoansForBackup().map { it.toBackup() },
             settings = BackupSettings(
                 userName = user.userName,
                 standardWorkMinutes = user.standardWorkMinutes,
@@ -73,6 +75,8 @@ class BackupRepository(
             database.vehicleExpenseDao().deleteAllForRestore()
             database.daySiteDao().deleteAllForRestore()
             database.tripDao().deleteAllForRestore()
+            database.stuffDao().deleteAllTools()
+            database.stuffDao().deleteAllLoans()
             database.fuelStopDao().deleteAllForRestore()
             database.maintenanceDao().deleteAllForRestore()
             database.vehicleDao().deleteAllForRestore()
@@ -101,6 +105,14 @@ class BackupRepository(
             database.tripDao().insertAllForRestore(
                 content.trips.filter { it.workDayId in giornate }.map { it.toEntity() }
             )
+            // Un attrezzo su un cantiere che non c'e' piu' torna senza cantiere.
+            database.stuffDao().insertToolsForRestore(
+                content.tools.map { t ->
+                    val e = t.toEntity()
+                    if (e.siteId != null && e.siteId !in cantieri) e.copy(siteId = null) else e
+                }
+            )
+            database.stuffDao().insertLoansForRestore(content.loans.map { it.toEntity() })
             database.activityDao().insertAllForRestore(content.activities.map { it.toEntity() })
             database.eventDao().insertAllForRestore(content.events.map { it.toEntity() })
             database.communicationDao()

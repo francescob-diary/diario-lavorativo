@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.components
 
+import it.diario.lavorativo.domain.dictation.TextCleaner
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -44,8 +45,13 @@ fun DictationTextField(
             ?.trim()
             .orEmpty()
         if (detto.isNotEmpty()) {
-            val frase = detto.replaceFirstChar { it.uppercase() }
-            onValueChange(if (value.isBlank()) frase else value.trimEnd() + " " + frase)
+            // La frase dettata arriva gia' ripulita: maiuscola, punto,
+            // niente ripetizioni. Il testo di prima si chiude col punto.
+            val frase = TextCleaner.clean(detto)
+            val prima = value.trimEnd().let {
+                if (it.isEmpty() || it.last() in ".!?") it else "$it."
+            }
+            onValueChange(if (prima.isEmpty()) frase else "$prima $frase")
         }
     }
 

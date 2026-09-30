@@ -1,5 +1,6 @@
 package it.diario.lavorativo.ui.dictation
 
+import it.diario.lavorativo.ui.components.DictationTextField
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -223,6 +224,28 @@ fun DictationScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            // Dettatura ripresa, o giornata gia' nel diario: lo si dice subito.
+            if (state.stage != DictationStage.SALVATO && state.stage != DictationStage.ELABORAZIONE) {
+                if (state.restored) {
+                    InfoCard(
+                        text = "Ho ripreso la dettatura che avevi lasciato a meta'.",
+                        action = "RICOMINCIA DA CAPO",
+                        onAction = {
+                            racconto.stop()
+                            racconto.setText("")
+                            viewModel.restart()
+                        }
+                    )
+                } else if (state.appending && state.stage == DictationStage.RACCONTO) {
+                    InfoCard(
+                        text = "Questa giornata e' gia' nel diario: quello che racconti adesso si " +
+                            "aggiunge a quello che c'e'. Gli orari detti ora sostituiscono quelli vecchi.",
+                        action = "APRI E CORREGGI LA GIORNATA",
+                        onAction = viewModel::editExisting
+                    )
+                }
+            }
+
             when (state.stage) {
                 DictationStage.RACCONTO -> StoryStep(
                     error = ascolto.error,
@@ -295,6 +318,7 @@ fun DictationScreen(
                     form = state.form,
                     sites = state.sites,
                     usedModel = state.usedModel,
+                    modelIssue = state.modelIssue,
                     timings = state.timings,
                     onChange = viewModel::updateForm,
                     onRedo = viewModel::backToStory,
@@ -507,6 +531,7 @@ private fun ConfirmStep(
     form: DictationForm,
     sites: List<Site>,
     usedModel: Boolean,
+    modelIssue: String?,
     timings: String?,
     onChange: ((DictationForm) -> DictationForm) -> Unit,
     onRedo: () -> Unit,
@@ -521,6 +546,16 @@ private fun ConfirmStep(
     )
     if (usedModel && timings != null) {
         Text(timings, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+    }
+    // Gemma non ha lavorato: lo si dice chiaro, con il motivo.
+    if (modelIssue != null) {
+        Spacer(Modifier.height(8.dp))
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(modelIssue, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium)
+        }
     }
     Spacer(Modifier.height(12.dp))
 
@@ -630,16 +665,19 @@ private fun ConfirmStep(
     }
 
     Section("Lavoro svolto")
-    OutlinedTextField(
+    // Il microfono accanto a ogni testo: si puo' dettare un'aggiunta o una
+    // correzione, e la tastiera resta per cambiare una parola sola.
+    DictationTextField(
         value = form.description,
         onValueChange = { v -> onChange { it.copy(description = v) } },
-        minLines = 2,
+        label = "Lavoro svolto",
         modifier = Modifier.fillMaxWidth()
     )
-    OutlinedTextField(
+    DictationTextField(
         value = form.materials,
         onValueChange = { v -> onChange { it.copy(materials = v) } },
-        label = { Text("Materiali") },
+        label = "Materiali",
+        minLines = 1,
         modifier = Modifier.fillMaxWidth()
     )
     OutlinedTextField(
@@ -690,11 +728,10 @@ private fun ConfirmStep(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier.fillMaxWidth()
     )
-    OutlinedTextField(
+    DictationTextField(
         value = form.notes,
         onValueChange = { v -> onChange { it.copy(notes = v) } },
-        label = { Text("Note") },
-        minLines = 2,
+        label = "Note",
         modifier = Modifier.fillMaxWidth()
     )
 
@@ -732,6 +769,19 @@ private fun SavedStep(onClose: () -> Unit) {
 }
 
 // ------------------------------------------------------------ pezzetti
+
+@Composable
+private fun InfoCard(text: String, action: String, onAction: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onAction) { Text(action) }
+        }
+    }
+}
 
 /** Il microfono continuo non va: si spiega perche' e si offre la riserva. */
 @Composable

@@ -114,6 +114,16 @@ class AppContainer(val context: Context) {
     /** Modello linguistico sul telefono, per la dettatura. */
     val localLlm = it.diario.lavorativo.core.llm.LocalLlm(context)
 
+    /** Deposito virtuale degli attrezzi e cose prestate. */
+    val stuffRepository = it.diario.lavorativo.data.repository.StuffRepository(
+        dao = database.stuffDao(),
+        siteDao = database.siteDao(),
+        clock = clock
+    )
+
+        /** Dettature lasciate a meta', una per giornata. */
+    val dictationDrafts = it.diario.lavorativo.ui.dictation.DictationDraftStore(context)
+
     val locationProvider: LocationProvider = AndroidLocationProvider(context)
 
     val workDayRepository: WorkDayRepository = WorkDayRepositoryImpl(

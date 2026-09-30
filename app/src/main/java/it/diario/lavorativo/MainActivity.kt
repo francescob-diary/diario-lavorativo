@@ -49,6 +49,10 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf(intent?.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_DICTATION, false) == true)
             }
 
+            var openLoans by remember {
+                mutableStateOf(intent?.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_LOANS, false) == true)
+            }
+
             // L'app potrebbe essere gia' aperta quando arriva una condivisione:
             // in quel caso il sistema chiama onNewIntent e l'Intent va riletto.
             DisposableEffect(Unit) {
@@ -57,6 +61,9 @@ class MainActivity : ComponentActivity() {
                     if (newIntent.hasExtra(EXTRA_OPEN_WEEK)) openWeekly = true
                     if (newIntent.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_DICTATION, false)) {
                         openDictation = true
+                    }
+                    if (newIntent.getBooleanExtra(ReminderReceiver.EXTRA_OPEN_LOANS, false)) {
+                        openLoans = true
                     }
                 }
                 addOnNewIntentListener(listener)
@@ -80,7 +87,9 @@ class MainActivity : ComponentActivity() {
                     openWeeklyReport = openWeekly,
                     onWeeklyReportOpened = { openWeekly = false },
                     openDictation = openDictation,
-                    onDictationOpened = { openDictation = false }
+                    onDictationOpened = { openDictation = false },
+                    openLoans = openLoans,
+                    onLoansOpened = { openLoans = false }
                 )
             }
             }

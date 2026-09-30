@@ -1,5 +1,8 @@
 package it.diario.lavorativo.ui.dictation
 
+import java.time.ZoneId
+import it.diario.lavorativo.domain.model.WorkDay
+import it.diario.lavorativo.domain.dictation.TextCleaner
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -106,7 +109,13 @@ data class DictationUiState(
     val questions: List<String> = emptyList(),
     val answers: List<Pair<String, String>> = emptyList(),
     val sites: List<Site> = emptyList(),
-    val message: String? = null
+    val message: String? = null,
+    /** La giornata e' gia' nel diario: quello che si racconta si aggiunge. */
+    val appending: Boolean = false,
+    /** Si e' ripresa una dettatura lasciata a meta'. */
+    val restored: Boolean = false,
+    /** Perche' Gemma non ha lavorato, se non ha lavorato. Si mostra ben visibile. */
+    val modelIssue: String? = null
 ) {
     val currentQuestion: String? get() = questions.firstOrNull()
 }
@@ -127,8 +136,12 @@ class DictationViewModel(
     private val settingsRepository: SettingsRepository,
     private val llm: LocalLlm,
     private val clock: AppClock,
-    epochDay: Long
+    private val drafts: DictationDraftStore,
+    private val epochDay: Long
 ) : ViewModel() {
+
+    /** La giornata come e' nel diario, se c'e' gia': base per aggiungere. */
+    private var existingForm: DictationForm? = null
 
     private val date: LocalDate = LocalDate.ofEpochDay(epochDay)
 
@@ -149,6 +162,56 @@ class DictationViewModel(
                 _uiState.update { it.copy(hasModel = uri != null) }
             }
         }
+        viewModelScope.launch {
+            // La giornata gia' salvata, se c'e': si parte da li'.
+            val giorno = workDayRepository.getDay(date)
+            if (giorno != null && (giorno.isStarted || giorno.site != null || !giorno.description.isNullOrBlank() ||
+                    giorno.dayType != DayType.LAVORO)
+            ) {
+                existingForm = giorno.toForm(clock.zone())
+                _uiState.update { it.copy(appending = true) }
+            }
+            // Dettatura lasciata a meta': si riprende esattamente da dove era.
+            drafts.load(epochDay)?.let { b ->
+                _uiState.update {
+                    it.copy(
+                        stage = b.stage,
+                        transcript = b.transcript,
+                        answers = b.answers,
+                        form = b.form,
+                        usedModel = b.usedModel,
+                        appending = b.appending || it.appending,
+                        restored = true
+                    )
+                }
+            }
+            // Da qui in poi ogni cambiamento resta scritto sul telefono.
+            _uiState.collect { drafts.save(epochDay, it) }
+        }
+    }
+
+    /** Butta la dettatura in corso e riparte da capo. */
+    fun restart() {
+        drafts.clear(epochDay)
+        askedCount = 0
+        _uiState.update {
+            it.copy(
+                stage = DictationStage.RACCONTO,
+                transcript = "",
+                answers = emptyList(),
+                questions = emptyList(),
+                form = DictationForm(),
+                usedModel = false,
+                restored = false,
+                modelIssue = null
+            )
+        }
+    }
+
+    /** Giornata gia' salvata: si va direttamente a correggerla, a mano o col microfono. */
+    fun editExisting() {
+        val base = existingForm ?: return
+        _uiState.update { it.copy(form = base, stage = DictationStage.CONFERMA) }
     }
 
     fun setTranscript(text: String) = _uiState.update { it.copy(transcript = text) }
@@ -167,6 +230,12 @@ class DictationViewModel(
         val uri = settingsRepository.modelUri.first()
 
         var usato = false
+        var problema: String? = when {
+            uri == null -> "Gemma non e' scelto (Impostazioni > Dettatura): ho usato le regole semplici."
+            !llm.isAvailable() -> (llm.unavailableReason() ?: "Gemma non parte") +
+                ": ho usato le regole semplici."
+            else -> null
+        }
         val draft: DictationDraft = if (uri != null && llm.isAvailable()) {
             val prompt = DictationPrompt.build(
                 transcript = transcript,
@@ -186,14 +255,12 @@ class DictationViewModel(
                         usato = true
                         RuleBasedDayParser.merge(letto, regole)
                     } else {
-                        _uiState.update {
-                            it.copy(message = "Il modello ha risposto in modo strano: uso le regole semplici")
-                        }
+                        problema = "Gemma ha risposto in un modo che non capisco: ho usato le regole semplici."
                         regole
                     }
                 }
                 is LlmResult.Failure -> {
-                    _uiState.update { it.copy(message = r.reason) }
+                    problema = r.reason + ": ho usato le regole semplici."
                     regole
                 }
             }
@@ -209,11 +276,26 @@ class DictationViewModel(
             .filterNot { DictationDefaults.isAboutTimes(it) }
             .take(minOf(2, spazio))
 
+        // Il racconto ripulito: punti, maiuscole, niente ripetizioni. Senza
+        // Gemma il lavoro svolto e' il racconto stesso, ripulito.
+        val pulito = draft.copy(
+            description = (draft.description ?: if (!usato) transcript else null)
+                ?.let { TextCleaner.clean(it) }?.ifBlank { null },
+            notes = draft.notes?.let { TextCleaner.clean(it) }?.ifBlank { null }
+        )
+        val base = existingForm
+        val nuovoModulo = if (_uiState.value.appending && base != null) {
+            mergeForms(base, pulito.toForm())
+        } else {
+            DictationDefaults.apply(pulito).toForm()
+        }
+
         _uiState.update {
             it.copy(
                 usedModel = usato,
+                modelIssue = problema,
                 progress = null,
-                form = DictationDefaults.apply(draft).toForm(),
+                form = nuovoModulo,
                 questions = domande,
                 stage = if (domande.isEmpty()) DictationStage.CONFERMA else DictationStage.DOMANDE
             )
@@ -362,6 +444,7 @@ class DictationViewModel(
                     settingsRepository = diarioContainer.settingsRepository,
                     llm = diarioContainer.localLlm,
                     clock = diarioContainer.clock,
+                    drafts = diarioContainer.dictationDrafts,
                     epochDay = epochDay
                 )
             }
@@ -396,3 +479,60 @@ fun DictationDraft.toForm(): DictationForm = DictationForm(
     km = km?.toString().orEmpty(),
     notes = notes.orEmpty()
 )
+
+/**
+ * Unisce quello che si e' appena raccontato alla giornata gia' salvata:
+ * gli orari e le pause detti ora sostituiscono quelli di prima, il resto
+ * si aggiunge (lavoro, note, spostamenti, cantieri nuovi).
+ */
+internal fun mergeForms(base: DictationForm, nuovo: DictationForm): DictationForm {
+    fun unisci(a: String, b: String): String = when {
+        b.isBlank() -> a
+        a.isBlank() -> b
+        a.contains(b, ignoreCase = true) -> a
+        else -> a.trimEnd() + " " + b.trim()
+    }
+    val cantieri = base.sites + nuovo.sites.filter { n ->
+        base.sites.none { b ->
+            (n.siteId != null && n.siteId == b.siteId) || b.name.equals(n.name, ignoreCase = true)
+        }
+    }
+    return base.copy(
+        dayType = if (nuovo.dayType != DayType.LAVORO) nuovo.dayType else base.dayType,
+        start = nuovo.start.ifBlank { base.start },
+        end = nuovo.end.ifBlank { base.end },
+        breaks = nuovo.breaks.ifEmpty { base.breaks },
+        sites = cantieri,
+        description = unisci(base.description, nuovo.description),
+        materials = unisci(base.materials, nuovo.materials),
+        place = nuovo.place.ifBlank { base.place },
+        trips = base.trips + nuovo.trips,
+        km = nuovo.km.ifBlank { base.km },
+        notes = unisci(base.notes, nuovo.notes)
+    )
+}
+
+/** La giornata del diario nel modulo della dettatura, per correggerla o aggiungere. */
+internal fun WorkDay.toForm(zone: ZoneId): DictationForm {
+    val fmt = DateTimeFormatter.ofPattern("HH:mm")
+    fun label(i: java.time.Instant?) = i?.atZone(zone)?.toLocalTime()?.format(fmt).orEmpty()
+    // Il lavoro svolto e' salvato come "testo. Materiali: ...": si separa.
+    val desc = description.orEmpty()
+    val idx = desc.indexOf("Materiali: ")
+    val lavoro = if (idx >= 0) desc.substring(0, idx).trim().trimEnd('.').let { if (it.isEmpty()) it else "$it." } else desc
+    val materiali = if (idx >= 0) desc.substring(idx + "Materiali: ".length).trim() else ""
+    return DictationForm(
+        dayType = dayType,
+        start = label(startTime),
+        end = label(endTime),
+        breaks = breaks.filter { it.endTime != null }.map { FormBreak(label(it.startTime), label(it.endTime)) },
+        sites = listOfNotNull(site?.let { FormSite(it.id, it.name) }) +
+            extraSites.map { FormSite(it.site.id, it.site.name, TimeTextParser.formatHours(it.minutes), it.description.orEmpty()) },
+        description = lavoro,
+        materials = materiali,
+        place = place.orEmpty(),
+        trips = trips.map { FormTrip(it.fromPlace.orEmpty(), it.toPlace.orEmpty(), label(it.departTime), label(it.arriveTime)) },
+        km = travelKm?.toString().orEmpty(),
+        notes = notes.orEmpty()
+    )
+}

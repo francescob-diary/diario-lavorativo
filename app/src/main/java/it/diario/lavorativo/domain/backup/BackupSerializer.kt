@@ -175,6 +175,30 @@ object BackupSerializer {
                     put("createdAt", t.createdAt)
                 }
             })
+            putArray("tools", content.tools.map { t ->
+                jsonObject {
+                    put("id", t.id)
+                    put("name", t.name)
+                    put("placeType", t.placeType)
+                    put("siteId", t.siteId)
+                    put("placeDetail", t.placeDetail)
+                    put("placeName", t.placeName)
+                    put("notes", t.notes)
+                    put("movedAt", t.movedAt)
+                    put("createdAt", t.createdAt)
+                }
+            })
+            putArray("loans", content.loans.map { l ->
+                jsonObject {
+                    put("id", l.id)
+                    put("what", l.what)
+                    put("toWhom", l.toWhom)
+                    put("loanDate", l.loanDate)
+                    put("returnedDate", l.returnedDate)
+                    put("notes", l.notes)
+                    put("createdAt", l.createdAt)
+                }
+            })
             putArray("voiceNotes", content.voiceNotes.map { v ->
                 jsonObject {
                     put("id", v.id)
@@ -317,6 +341,8 @@ object BackupSerializer {
             maintenances = root.objects("maintenances").mapNotNull { readMaintenance(it) },
             daySites = root.objects("daySites").mapNotNull { readDaySite(it) },
             trips = root.objects("trips").mapNotNull { readTrip(it) },
+            tools = root.objects("tools").mapNotNull { readTool(it) },
+            loans = root.objects("loans").mapNotNull { readLoan(it) },
             settings = (root["settings"] as? JsonValue.Obj)?.let { s ->
                 BackupSettings(
                     userName = s.string("userName"),
@@ -369,7 +395,9 @@ object BackupSerializer {
             (root.objects("vehicleExpenses").size - content.vehicleExpenses.size) +
             (root.objects("maintenances").size - content.maintenances.size) +
             (root.objects("daySites").size - content.daySites.size) +
-            (root.objects("trips").size - content.trips.size)
+            (root.objects("trips").size - content.trips.size) +
+            (root.objects("tools").size - content.tools.size) +
+            (root.objects("loans").size - content.loans.size)
     } catch (e: JsonException) {
         0
     }
@@ -538,6 +566,37 @@ object BackupSerializer {
             arriveTime = o.longOrNull("arriveTime"),
             fromPlace = o.stringOrNull("fromPlace"),
             toPlace = o.stringOrNull("toPlace"),
+            notes = o.stringOrNull("notes"),
+            createdAt = o.long("createdAt")
+        )
+    }
+
+    private fun readTool(o: JsonValue.Obj): BackupTool? {
+        val id = o.longOrNull("id") ?: return null
+        val name = o.stringOrNull("name") ?: return null
+        return BackupTool(
+            id = id,
+            name = name,
+            placeType = o.stringOrNull("placeType") ?: "DEPOSITO",
+            siteId = o.longOrNull("siteId"),
+            placeDetail = o.stringOrNull("placeDetail"),
+            placeName = o.stringOrNull("placeName"),
+            notes = o.stringOrNull("notes"),
+            movedAt = o.long("movedAt"),
+            createdAt = o.long("createdAt")
+        )
+    }
+
+    private fun readLoan(o: JsonValue.Obj): BackupLoan? {
+        val id = o.longOrNull("id") ?: return null
+        val what = o.stringOrNull("what") ?: return null
+        val loanDate = o.longOrNull("loanDate") ?: return null
+        return BackupLoan(
+            id = id,
+            what = what,
+            toWhom = o.stringOrNull("toWhom").orEmpty(),
+            loanDate = loanDate,
+            returnedDate = o.longOrNull("returnedDate"),
             notes = o.stringOrNull("notes"),
             createdAt = o.long("createdAt")
         )

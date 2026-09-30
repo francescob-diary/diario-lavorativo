@@ -97,7 +97,9 @@ object RuleBasedDayParser {
                 ?.let { m -> fine = clock(m.groupValues[2])?.let { afternoon(inizio, it) } }
         }
 
-        val km = Regex("(\\d{1,4})\\s*(km|chilometri)").find(t)?.groupValues?.get(1)?.toIntOrNull()
+        // Chilometri anche detti a parole ("ottanta chilometri"): il
+        // microfono spesso scrive i numeri in lettere.
+        val km = ItalianNumbers.findKm(transcript) ?: ItalianNumbers.findKm(t)
 
         val cantieri = SiteNameMatcher.findInText(transcript, sites).map { s ->
             DraftSite(name = s.name, siteId = s.id)

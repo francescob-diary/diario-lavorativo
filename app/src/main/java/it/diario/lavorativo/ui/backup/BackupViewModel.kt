@@ -279,7 +279,7 @@ class BackupViewModel(
     }
 
     companion object {
-        const val DATABASE_VERSION = 8
+        const val DATABASE_VERSION = 9
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {

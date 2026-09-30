@@ -39,6 +39,10 @@ class DiarioApplication : Application() {
                 it.diario.lavorativo.core.reminder.DailyReminderScheduler(this@DiarioApplication)
                     .schedule(daily, LocalDateTime.now())
             }
+            runCatching {
+                it.diario.lavorativo.core.reminder.LoanReminderScheduler(this@DiarioApplication)
+                    .schedule(LocalDateTime.now())
+            }
         }
     }
 }

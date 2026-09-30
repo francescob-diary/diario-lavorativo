@@ -41,9 +41,12 @@ Regole:
 - Una zona o una stanza (lounge, bagno, cucina, piano terra, facciata) NON e' un cantiere: va nel lavoro, es. "cubo nella zona lounge".
 - Se nomina un cantiere solo per sbaglio o per dire dove si trova una cosa, non aggiungerlo.
 - Se un cantiere corrisponde a uno di questi, scrivi il nome esatto: $cantieri
-- lavoro: cosa ha fatto, in poche parole. materiali: i materiali nominati.
+- lavoro: il racconto del lavoro fatto, RISCRITTO in italiano corretto con punteggiatura e maiuscole, in frasi brevi. Non riassumere e non togliere informazioni (lavorazioni, zone, materiali, quantita', persone, consegne): togli solo ripetizioni, esitazioni ("eh", "cioe'", "diciamo") e gli orari gia' messi nei campi.
+- materiali: i materiali nominati, separati da virgola.
 - spostamenti: viaggi da un posto a un altro, con gli orari se detti.
+- km: i chilometri fatti col furgone o col mezzo, come numero (es. "ottanta chilometri" -> 80). null se non detti.
 - Se gli orari non sono detti lasciali null: valgono quelli standard 08:00-17:00 con pausa 12:00-13:00.
+- note: altre cose dette che non sono lavoro (commenti, cose da ricordare), riscritte in italiano corretto. null se non ce ne sono.
 - domande: al massimo 2 domande brevi, solo se manca il cantiere o il lavoro fatto. Mai sugli orari.
 
 Oggi e' ${date.format(DATA)}.

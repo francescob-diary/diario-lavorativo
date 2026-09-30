@@ -165,8 +165,12 @@ Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeGenerate(
     llama_tokenize(engine->vocab, text.c_str(), (int32_t) text.size(),
                    tokens.data(), n_tokens, true, true);
 
+    // Lo spazio per la risposta e' quello che resta dopo il racconto: se il
+    // racconto e' lungo la risposta si accorcia, e solo se non resta quasi
+    // niente ci si arrende.
     const int32_t ctx_size = (int32_t) llama_n_ctx(engine->ctx);
-    if (n_tokens + max_tokens > ctx_size) {
+    max_tokens = std::min<int32_t>(max_tokens, ctx_size - n_tokens - 8);
+    if (max_tokens < 200) {
         LOGI("testo troppo lungo: %d token", n_tokens);
         return to_bytes(env, "\x01TROPPO_LUNGO");
     }

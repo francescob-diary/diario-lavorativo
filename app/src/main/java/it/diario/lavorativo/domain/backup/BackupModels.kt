@@ -21,7 +21,7 @@ package it.diario.lavorativo.domain.backup
  * viene rifiutato, perche' quella non saprebbe dove mettere i dati
  * dell'auto e li perderebbe per strada senza dirlo.
  */
-const val BACKUP_FORMAT_VERSION = 4
+const val BACKUP_FORMAT_VERSION = 5
 
 data class BackupWorkDay(
     val id: Long,
@@ -150,6 +150,30 @@ data class BackupTrip(
     val createdAt: Long
 )
 
+/** Attrezzo del deposito virtuale (formato 5). */
+data class BackupTool(
+    val id: Long,
+    val name: String,
+    val placeType: String,
+    val siteId: Long?,
+    val placeDetail: String?,
+    val placeName: String?,
+    val notes: String?,
+    val movedAt: Long,
+    val createdAt: Long
+)
+
+/** Cosa prestata (formato 5). */
+data class BackupLoan(
+    val id: Long,
+    val what: String,
+    val toWhom: String,
+    val loanDate: Long,
+    val returnedDate: Long?,
+    val notes: String?,
+    val createdAt: Long
+)
+
 data class BackupVoiceNote(
     val id: Long,
     val workDayId: Long,
@@ -238,13 +262,15 @@ data class BackupContent(
     val maintenances: List<BackupMaintenance> = emptyList(),
     val settings: BackupSettings? = null,
     val daySites: List<BackupDaySite> = emptyList(),
-    val trips: List<BackupTrip> = emptyList()
+    val trips: List<BackupTrip> = emptyList(),
+    val tools: List<BackupTool> = emptyList(),
+    val loans: List<BackupLoan> = emptyList()
 ) {
     val totalRows: Int
         get() = workDays.size + breaks.size + sites.size + activities.size +
             events.size + communications.size + photos.size + voiceNotes.size +
             vehicles.size + fuelStops.size + vehicleExpenses.size + maintenances.size +
-            daySites.size + trips.size
+            daySites.size + trips.size + tools.size + loans.size
 
     val isEmpty: Boolean get() = totalRows == 0
 }

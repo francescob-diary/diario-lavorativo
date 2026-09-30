@@ -14,6 +14,10 @@ import it.diario.lavorativo.data.local.entity.MaintenanceEntity
 import it.diario.lavorativo.data.local.entity.WorkDayEntity
 import it.diario.lavorativo.data.local.entity.DaySiteEntity
 import it.diario.lavorativo.data.local.entity.TripEntity
+import it.diario.lavorativo.data.local.entity.ToolEntity
+import it.diario.lavorativo.data.local.entity.LoanEntity
+import it.diario.lavorativo.domain.backup.BackupTool
+import it.diario.lavorativo.domain.backup.BackupLoan
 import it.diario.lavorativo.domain.backup.BackupDaySite
 import it.diario.lavorativo.domain.backup.BackupTrip
 import it.diario.lavorativo.domain.backup.BackupActivity
@@ -206,4 +210,24 @@ fun TripEntity.toBackup() = BackupTrip(
 fun BackupTrip.toEntity() = TripEntity(
     id = id, workDayId = workDayId, departTime = departTime, arriveTime = arriveTime,
     fromPlace = fromPlace, toPlace = toPlace, notes = notes, createdAt = createdAt
+)
+
+fun ToolEntity.toBackup() = BackupTool(
+    id = id, name = name, placeType = placeType, siteId = siteId, placeDetail = placeDetail,
+    placeName = placeName, notes = notes, movedAt = movedAt, createdAt = createdAt
+)
+
+fun BackupTool.toEntity() = ToolEntity(
+    id = id, name = name, placeType = placeType, siteId = siteId, placeDetail = placeDetail,
+    placeName = placeName, notes = notes, movedAt = movedAt, createdAt = createdAt
+)
+
+fun LoanEntity.toBackup() = BackupLoan(
+    id = id, what = what, toWhom = toWhom, loanDate = loanDate,
+    returnedDate = returnedDate, notes = notes, createdAt = createdAt
+)
+
+fun BackupLoan.toEntity() = LoanEntity(
+    id = id, what = what, toWhom = toWhom, loanDate = loanDate,
+    returnedDate = returnedDate, notes = notes, createdAt = createdAt
 )

@@ -1,5 +1,9 @@
 package it.diario.lavorativo.ui.navigation
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import it.diario.lavorativo.ui.history.DaySummaryScreen
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -38,8 +42,11 @@ import it.diario.lavorativo.ui.weekly.WeeklyScreen
 import it.diario.lavorativo.ui.sites.SitesScreen
 import it.diario.lavorativo.ui.settings.SettingsScreen
 import it.diario.lavorativo.ui.today.TodayScreen
+import it.diario.lavorativo.ui.stuff.StuffScreen
+import it.diario.lavorativo.ui.stuff.StuffTab
 
 /** Struttura di navigazione dell'app: barra in basso + NavHost. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DiarioNavHost(
     sharedText: SharedText? = null,
@@ -47,7 +54,9 @@ fun DiarioNavHost(
     openWeeklyReport: Boolean = false,
     onWeeklyReportOpened: () -> Unit = {},
     openDictation: Boolean = false,
-    onDictationOpened: () -> Unit = {}
+    onDictationOpened: () -> Unit = {},
+    openLoans: Boolean = false,
+    onLoansOpened: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -56,6 +65,9 @@ fun DiarioNavHost(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
+            // Mentre si scrive la barra in basso sparisce: lo spazio serve
+            // al testo, che deve restare sopra la tastiera.
+            if (!WindowInsets.isImeVisible)
             // Barra bassa: icone sole, la scritta compare solo sulla sezione
             // in cui ci si trova. Lo spazio risparmiato va alle schermate.
             // Lo spazio dei tasti di sistema si aggiunge fuori, cosi' i 64dp
@@ -81,7 +93,9 @@ fun DiarioNavHost(
                                     currentRoute.startsWith(ENTRIES_ROUTE_PREFIX) ||
                                     currentRoute.startsWith(PHOTOS_ROUTE_PREFIX) ||
                                     currentRoute.startsWith(VOICE_ROUTE_PREFIX) ||
-                                    currentRoute == WEEKLY_ROUTE)),
+                                    currentRoute == WEEKLY_ROUTE)) ||
+                            (destination == DiarioDestination.ATTREZZI &&
+                                currentRoute == LOANS_ROUTE),
                         onClick = {
                             if (currentRoute != destination.route) {
                                 navController.navigate(destination.route) {
@@ -126,6 +140,14 @@ fun DiarioNavHost(
             }
         }
 
+        // Arrivo dalla notifica delle 16:30: si apre la lista dei prestiti.
+        LaunchedEffect(openLoans) {
+            if (openLoans) {
+                navController.navigate(LOANS_ROUTE)
+                onLoansOpened()
+            }
+        }
+
         LaunchedEffect(sharedText) {
             if (sharedText != null) {
                 val today = java.time.LocalDate.now().toEpochDay()
@@ -136,7 +158,12 @@ fun DiarioNavHost(
         NavHost(
             navController = navController,
             startDestination = DiarioDestination.OGGI.route,
-            modifier = Modifier.padding(innerPadding)
+            // Le schermate si fermano sopra la tastiera: il campo in cui si
+            // scrive resta sempre visibile e scorre su da solo.
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
         ) {
             composable(DiarioDestination.OGGI.route) {
                 TodayScreen(
@@ -261,6 +288,12 @@ fun DiarioNavHost(
                     onDone = { navController.popBackStack() }
                 )
             }
+            composable(DiarioDestination.ATTREZZI.route) {
+                StuffScreen(startTab = StuffTab.DEPOSITO)
+            }
+            composable(LOANS_ROUTE) {
+                StuffScreen(startTab = StuffTab.PRESTITI)
+            }
             composable(DiarioDestination.IMPOSTAZIONI.route) {
                 SettingsScreen(
                     onOpenExport = { navController.navigate(EXPORT_ROUTE) },
@@ -299,6 +332,7 @@ private const val DAY_ROUTE_PREFIX = "giornata/"
 private const val DAY_ROUTE = DAY_ROUTE_PREFIX + "{" + DAY_ARG + "}"
 
 private const val WEEKLY_ROUTE = "rapportino"
+private const val LOANS_ROUTE = "prestiti"
 private const val EXPORT_ROUTE = "esporta"
 private const val BACKUP_ROUTE = "backup"
 private const val VEHICLE_ROUTE = "mezzo"

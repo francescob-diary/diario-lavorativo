@@ -176,6 +176,25 @@ class BackupSerializerTest {
     }
 
     @Test
+    fun `attrezzi e prestiti tornano indietro identici`() {
+        val originale = BackupContent(
+            tools = listOf(
+                BackupTool(1, "Flex grande", "CANTIERE", 7, "bagno primo piano", null, "disco nuovo", 10L, 5L),
+                BackupTool(2, "Livella laser", "ALTRO", null, null, "casa di Marco", null, 11L, 6L)
+            ),
+            loans = listOf(
+                BackupLoan(1, "Trapano", "Giuseppe", 20000, null, "con le punte", 3L),
+                BackupLoan(2, "Scala", "Luca", 19990, 19995, null, 4L)
+            )
+        )
+        val esito = BackupSerializer.readContent(BackupSerializer.writeContent(originale))
+        assertTrue(esito is BackupReadResult.Ok)
+        val letto = (esito as BackupReadResult.Ok).content
+        assertEquals(originale.tools, letto.tools)
+        assertEquals(originale.loans, letto.loans)
+    }
+
+    @Test
     fun `il manifest si scrive e si rilegge uguale`() {
         val m = BackupManifest(
             formatVersion = 2, createdAt = 1774000000000L, appVersion = "1.0",

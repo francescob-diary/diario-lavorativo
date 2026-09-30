@@ -75,7 +75,7 @@ class LocalLlm(private val context: Context) {
     suspend fun generate(
         modelUri: Uri,
         prompt: String,
-        maxTokens: Int = 320,
+        maxTokens: Int = 700,
         onProgress: (LlmProgress) -> Unit = {}
     ): LlmResult = withContext(Dispatchers.Default) {
         unavailableReason()?.let { return@withContext LlmResult.Failure(it) }

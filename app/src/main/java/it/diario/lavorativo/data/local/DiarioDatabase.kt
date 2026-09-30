@@ -39,6 +39,10 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_4_5
 import it.diario.lavorativo.data.local.migration.MIGRATION_5_6
 import it.diario.lavorativo.data.local.migration.MIGRATION_6_7
 import it.diario.lavorativo.data.local.migration.MIGRATION_7_8
+import it.diario.lavorativo.data.local.migration.MIGRATION_8_9
+import it.diario.lavorativo.data.local.dao.StuffDao
+import it.diario.lavorativo.data.local.entity.ToolEntity
+import it.diario.lavorativo.data.local.entity.LoanEntity
 
 /**
  * Database locale dell'app.
@@ -55,6 +59,7 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_7_8
  *            maintenances) e colonna travelKm sulle giornate.
  * version 7: campo workInProgress (lavoro in corso) sui cantieri.
  * version 8: tabelle day_sites e trips, colonna siteId sulle foto.
+ * version 9: tabelle tools (deposito virtuale) e loans (cose prestate).
  */
 @Database(
     entities = [
@@ -71,9 +76,11 @@ import it.diario.lavorativo.data.local.migration.MIGRATION_7_8
         VehicleExpenseEntity::class,
         MaintenanceEntity::class,
         DaySiteEntity::class,
-        TripEntity::class
+        TripEntity::class,
+        ToolEntity::class,
+        LoanEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = true
 )
 abstract class DiarioDatabase : RoomDatabase() {
@@ -92,6 +99,7 @@ abstract class DiarioDatabase : RoomDatabase() {
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun daySiteDao(): DaySiteDao
     abstract fun tripDao(): TripDao
+    abstract fun stuffDao(): StuffDao
 
     companion object {
         private const val DB_NAME = "diario_lavorativo.db"
@@ -117,7 +125,8 @@ abstract class DiarioDatabase : RoomDatabase() {
                     MIGRATION_4_5,
                     MIGRATION_5_6,
                     MIGRATION_6_7,
-                    MIGRATION_7_8
+                    MIGRATION_7_8,
+                    MIGRATION_8_9
                 )
                 // WAL: scritture piu' veloci e letture non bloccate (utile in cantiere).
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
