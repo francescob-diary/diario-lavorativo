@@ -60,7 +60,17 @@ class LocalLlm(private val context: Context) {
     private var handle: Long = 0L
 
     /** Vero se la libreria nativa c'e' ed e' caricabile su questo telefono. */
-    fun isAvailable(): Boolean = LlamaBridge.ensureLibrary() == null
+    private val libDir: String = context.applicationInfo.nativeLibraryDir
+
+    fun isAvailable(): Boolean = LlamaBridge.ensureLibrary(libDir) == null
+
+    /** Perche' il motore non parte, se non parte. Null = va tutto bene. */
+    fun unavailableReason(): String? = LlamaBridge.ensureLibrary(libDir)?.let {
+        "Il motore di Gemma non si avvia su questo telefono (" + (it.message ?: it.javaClass.simpleName) + ")"
+    }
+
+    /** Descrizione del processore vista dal motore. */
+    fun systemInfo(): String = LlamaBridge.systemInfo
 
     suspend fun generate(
         modelUri: Uri,
@@ -68,9 +78,7 @@ class LocalLlm(private val context: Context) {
         maxTokens: Int = 320,
         onProgress: (LlmProgress) -> Unit = {}
     ): LlmResult = withContext(Dispatchers.Default) {
-        LlamaBridge.ensureLibrary()?.let {
-            return@withContext LlmResult.Failure("Il motore del modello non funziona su questo telefono")
-        }
+        unavailableReason()?.let { return@withContext LlmResult.Failure(it) }
         onProgress(LlmProgress(LlmProgress.Phase.CARICAMENTO))
 
         val pfd: ParcelFileDescriptor = try {

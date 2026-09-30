@@ -15,21 +15,32 @@ internal object LlamaBridge {
     private var loaded: Throwable? = null
     private var tried = false
 
-    /** Carica la libreria una volta sola. Null se tutto bene, altrimenti l'errore. */
+    /** Cosa ha visto il motore del processore, per la diagnosi. */
+    @Volatile
+    var systemInfo: String = ""
+        private set
+
+    /**
+     * Carica il motore una volta sola. Dalla cartella delle librerie
+     * dell'app sceglie da solo la variante adatta a questo processore.
+     * Null se tutto bene, altrimenti l'errore.
+     */
     @Synchronized
-    fun ensureLibrary(): Throwable? {
+    fun ensureLibrary(nativeLibDir: String): Throwable? {
         if (!tried) {
             tried = true
-            loaded = if (!CpuInfo.hasDotProduct()) {
-                // Libreria compilata per processori con istruzioni veloci:
-                // su quelli senza si chiuderebbe l'app. Meglio le regole.
-                UnsupportedOperationException("Processore senza istruzioni per il modello")
-            } else {
-                runCatching { System.loadLibrary("diario_llm") }.exceptionOrNull()
-            }
+            loaded = runCatching {
+                System.loadLibrary("diario_llm")
+                systemInfo = nativeInit(nativeLibDir)
+                if (systemInfo.startsWith("dispositivi: 0")) {
+                    throw IllegalStateException("Nessuna variante del motore adatta a questo processore")
+                }
+            }.exceptionOrNull()
         }
         return loaded
     }
+
+    external fun nativeInit(nativeLibDir: String): String
 
     external fun nativeLoad(path: String, nCtx: Int, nThreads: Int): Long
     external fun nativeSetThreads(handle: Long, genThreads: Int, batchThreads: Int)

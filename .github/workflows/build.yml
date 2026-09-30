@@ -46,6 +46,19 @@ jobs:
             exit 1
           fi
 
+      # Controllo: le librerie del motore (con tutte le varianti per i vari
+      # processori) devono essere dentro l'APK. Se ne manca una la build
+      # si ferma qui, invece di scoprirlo sul telefono.
+      - name: Controlla le librerie del motore
+        run: |
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          LIBS=$(unzip -l "$APK" | grep -o 'lib/arm64-v8a/[^ ]*\.so' | sort)
+          echo "$LIBS"
+          echo "::notice title=Librerie nell'APK::$(echo $LIBS | tr '\n' ' ')"
+          for l in libdiario_llm.so libllama.so libggml.so libggml-base.so libc++_shared.so libggml-cpu-android_armv8.0_1.so; do
+            echo "$LIBS" | grep -q "/$l" || { echo "::error title=Libreria mancante::$l"; exit 1; }
+          done
+
       # L'APK si carica subito, prima dei test: se un test dovesse
       # fallire, l'APK e' comunque gia' scaricabile.
       - name: Metti l'APK fra i risultati

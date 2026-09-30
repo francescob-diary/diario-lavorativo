@@ -25,7 +25,7 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_static")
+                arguments += listOf("-DCMAKE_BUILD_TYPE=Release", "-DANDROID_STL=c++_shared")
             }
         }
     }
@@ -74,6 +74,11 @@ android {
         compose = true
     }
     packaging {
+        // Le librerie del motore vanno estratte in una cartella vera: e' li'
+        // che llama.cpp va a cercare la variante adatta al processore.
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }

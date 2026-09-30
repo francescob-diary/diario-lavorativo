@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include "llama.h"
+#include "ggml-backend.h"
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -73,11 +74,32 @@ void report(JNIEnv * env, jobject listener, jmethodID method, jint phase, jint d
 
 extern "C" {
 
+// Da chiamare una volta, prima di tutto: carica dalla cartella delle
+// librerie dell'app la variante del motore adatta a questo processore.
+// Restituisce la descrizione del processore vista dal motore, utile per
+// capire cosa sta succedendo sul telefono.
+JNIEXPORT jstring JNICALL
+Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeInit(JNIEnv * env, jobject, jstring jdir) {
+    if (!g_backend_ready.exchange(true)) {
+        std::string dir = to_string(env, jdir);
+        ggml_backend_load_all_from_path(dir.c_str());
+        llama_backend_init();
+    }
+    std::string info = "dispositivi: " + std::to_string(ggml_backend_dev_count());
+    for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
+        ggml_backend_dev_t dev = ggml_backend_dev_get(i);
+        info += std::string(" | ") + ggml_backend_dev_name(dev) + " (" + ggml_backend_dev_description(dev) + ")";
+    }
+    info += std::string(" | ") + llama_print_system_info();
+    return env->NewStringUTF(info.c_str());
+}
+
 JNIEXPORT jlong JNICALL
 Java_it_diario_lavorativo_core_llm_LlamaBridge_nativeLoad(
         JNIEnv * env, jobject, jstring jpath, jint n_ctx, jint n_threads) {
-    if (!g_backend_ready.exchange(true)) {
-        llama_backend_init();
+    if (ggml_backend_dev_count() == 0) {
+        LOGI("nessuna variante del motore caricata");
+        return 0;
     }
     std::string path = to_string(env, jpath);
 
